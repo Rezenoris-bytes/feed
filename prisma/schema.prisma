@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -36,16 +36,16 @@ enum MessageAuthor {
 
 // ---------- Authentication ----------
 model User {
-  id             String    @id @default(uuid()) @db.Uuid
+  id             String    @id @default(uuid()) @db.Char(36)
   email          String    @unique
   passwordHash   String
   displayName    String
   isActive       Boolean   @default(true)
-  mfaSecretEnc   String? // AES-GCM encrypted TOTP secret
+  mfaSecretEnc   String?   @db.VarChar(255) // AES-GCM encrypted TOTP secret
   mfaEnabled     Boolean   @default(false)
   failedLogins   Int       @default(0)
   lockedUntil    DateTime?
-  departmentId   String?   @db.Uuid
+  departmentId   String?   @db.Char(36)
   department     Department? @relation(fields: [departmentId], references: [id])
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -61,7 +61,7 @@ model User {
 }
 
 model Role {
-  id          String           @id @default(uuid()) @db.Uuid
+  id          String           @id @default(uuid()) @db.Char(36)
   key         RoleKey          @unique
   name        String
   users       UserRole[]
@@ -71,7 +71,7 @@ model Role {
 }
 
 model Permission {
-  id    String           @id @default(uuid()) @db.Uuid
+  id    String           @id @default(uuid()) @db.Char(36)
   key   String           @unique
   roles RolePermission[]
 
@@ -79,8 +79,8 @@ model Permission {
 }
 
 model RolePermission {
-  roleId       String     @db.Uuid
-  permissionId String     @db.Uuid
+  roleId       String     @db.Char(36)
+  permissionId String     @db.Char(36)
   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
@@ -89,8 +89,8 @@ model RolePermission {
 }
 
 model UserRole {
-  userId String @db.Uuid
-  roleId String @db.Uuid
+  userId String @db.Char(36)
+  roleId String @db.Char(36)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
@@ -100,7 +100,7 @@ model UserRole {
 
 model Session {
   id          String    @id // sha256 of the cookie token, never the raw token
-  userId      String    @db.Uuid
+  userId      String    @db.Char(36)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   mfaVerified Boolean   @default(false)
   mfaAt       DateTime?
@@ -112,7 +112,7 @@ model Session {
 }
 
 model Department {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String   @id @default(uuid()) @db.Char(36)
   name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -123,7 +123,7 @@ model Department {
 }
 
 model EmployeeProfile {
-  userId      String  @id @db.Uuid
+  userId      String  @id @db.Char(36)
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   employeeNo  String  @unique
   jobTitle    String?
@@ -134,7 +134,7 @@ model EmployeeProfile {
 
 // ---------- Feedback (no user FK anywhere) ----------
 model FeedbackCategory {
-  id        String  @id @default(uuid()) @db.Uuid
+  id        String  @id @default(uuid()) @db.Char(36)
   name      String  @unique
   isActive  Boolean @default(true)
   sortOrder Int     @default(0)
@@ -145,7 +145,7 @@ model FeedbackCategory {
 }
 
 model FeedbackPriority {
-  id       String @id @default(uuid()) @db.Uuid
+  id       String @id @default(uuid()) @db.Char(36)
   key      String @unique // LOW, MEDIUM, HIGH, CRITICAL
   name     String
   rank     Int
@@ -155,18 +155,18 @@ model FeedbackPriority {
 }
 
 model FeedbackSubmission {
-  id           String         @id @default(uuid()) @db.Uuid
+  id           String         @id @default(uuid()) @db.Char(36)
   reference    String         @unique // random, non-sequential
   ownerHmac    String? // HMAC(userId) so employee can list own items; not reversible. NULL for anonymous cases.
   anonymous    Boolean        @default(false) // true = no identity recorded anywhere; tracked with a secret key
   trackingKeyHash String? // HMAC of the one-time secret key (anonymous only); the key itself is never stored
-  title        String
-  description  String
-  categoryId   String         @db.Uuid
+  title        String         @db.VarChar(150)
+  description  String         @db.Text
+  categoryId   String         @db.Char(36)
   category     FeedbackCategory @relation(fields: [categoryId], references: [id])
-  priorityId   String         @db.Uuid
+  priorityId   String         @db.Char(36)
   priority     FeedbackPriority @relation(fields: [priorityId], references: [id])
-  departmentId String?        @db.Uuid
+  departmentId String?        @db.Char(36)
   department   Department?    @relation(fields: [departmentId], references: [id])
   status       FeedbackStatus @default(SUBMITTED)
   submittedOn  DateTime       @db.Date // day precision only, reduces timing correlation
@@ -192,17 +192,17 @@ model FeedbackSubmission {
 
 // Only touched by src/server/identity.ts. RLS + separate DB role in migration.
 model FeedbackIdentityMapping {
-  feedbackId   String             @id @db.Uuid
+  feedbackId   String             @id @db.Char(36)
   feedback     FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Restrict)
-  userIdEnc    String // AES-256-GCM(userId)
+  userIdEnc    String             @db.VarChar(255) // AES-256-GCM(userId)
   createdAt    DateTime           @default(now())
 
   @@map("feedback_identity_mappings")
 }
 
 model FeedbackAttachment {
-  id          String             @id @default(uuid()) @db.Uuid
-  feedbackId  String             @db.Uuid
+  id          String             @id @default(uuid()) @db.Char(36)
+  feedbackId  String             @db.Char(36)
   feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   storageKey  String             @unique // random file name on disk
   mimeType    String
@@ -214,12 +214,12 @@ model FeedbackAttachment {
 }
 
 model FeedbackAssignment {
-  id          String             @id @default(uuid()) @db.Uuid
-  feedbackId  String             @db.Uuid
+  id          String             @id @default(uuid()) @db.Char(36)
+  feedbackId  String             @db.Char(36)
   feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  assigneeId  String             @db.Uuid
+  assigneeId  String             @db.Char(36)
   assignee    User               @relation("assignee", fields: [assigneeId], references: [id])
-  assignedById String            @db.Uuid
+  assignedById String            @db.Char(36)
   active      Boolean            @default(true)
   createdAt   DateTime           @default(now())
 
@@ -229,13 +229,13 @@ model FeedbackAssignment {
 }
 
 model FeedbackStatusHistory {
-  id         String             @id @default(uuid()) @db.Uuid
-  feedbackId String             @db.Uuid
+  id         String             @id @default(uuid()) @db.Char(36)
+  feedbackId String             @db.Char(36)
   feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   fromStatus FeedbackStatus?
   toStatus   FeedbackStatus
-  actorId    String?            @db.Uuid // null when the employee (anonymous) acted
-  remarks    String?
+  actorId    String?            @db.Char(36) // null when the employee (anonymous) acted
+  remarks    String?            @db.Text
   createdAt  DateTime           @default(now())
 
   @@index([feedbackId])
@@ -243,11 +243,11 @@ model FeedbackStatusHistory {
 }
 
 model FeedbackInternalNote {
-  id         String             @id @default(uuid()) @db.Uuid
-  feedbackId String             @db.Uuid
+  id         String             @id @default(uuid()) @db.Char(36)
+  feedbackId String             @db.Char(36)
   feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  authorId   String             @db.Uuid
-  body       String
+  authorId   String             @db.Char(36)
+  body       String             @db.Text
   createdAt  DateTime           @default(now())
 
   @@index([feedbackId])
@@ -255,12 +255,12 @@ model FeedbackInternalNote {
 }
 
 model FeedbackMessage {
-  id         String             @id @default(uuid()) @db.Uuid
-  feedbackId String             @db.Uuid
+  id         String             @id @default(uuid()) @db.Char(36)
+  feedbackId String             @db.Char(36)
   feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   author     MessageAuthor
-  staffId    String?            @db.Uuid // null for employee messages
-  body       String
+  staffId    String?            @db.Char(36) // null for employee messages
+  body       String             @db.Text
   createdAt  DateTime           @default(now())
 
   @@index([feedbackId])
@@ -268,11 +268,11 @@ model FeedbackMessage {
 }
 
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @db.Char(36)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   kind      String
-  text      String // reference + status only, never content or identity
+  text      String    @db.VarChar(500) // reference + status only, never content or identity
   link      String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
@@ -283,8 +283,8 @@ model Notification {
 
 // ---------- Audit (append-only, enforced by trigger) ----------
 model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  actorId   String?  @db.Uuid
+  id        String   @id @default(uuid()) @db.Char(36)
+  actorId   String?  @db.Char(36)
   action    String
   target    String?
   meta      Json?
@@ -295,10 +295,10 @@ model AuditLog {
 }
 
 model IdentityAccessLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  actorId    String   @db.Uuid
-  feedbackId String   @db.Uuid
-  reason     String
+  id         String   @id @default(uuid()) @db.Char(36)
+  actorId    String   @db.Char(36)
+  feedbackId String   @db.Char(36)
+  reason     String   @db.VarChar(500)
   outcome    String // GRANTED | DENIED
   createdAt  DateTime @default(now())
 

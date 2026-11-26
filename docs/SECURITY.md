@@ -2,7 +2,7 @@
 
 > **Current model (updated 26 Nov 2026): employees never sign in.** Every submission is fully anonymous, made from the public pages `/` → `/submit` and followed up at `/track` with a reference and a one-time secret key. No identity is stored, so the earlier "Super Admin reveals identity" feature was **removed**. Only HR, reviewers and Super Admins have accounts. Older sections below that mention employee login, "My submissions" or identity reveal describe the previous design.
 
-Scope: Feed v0.1 (Next.js 15.5, Prisma 6, PostgreSQL 19 embedded), audited 26 Nov 2026.
+Scope: Feed v0.1 (Next.js 15.5, Prisma 6, database now MySQL/MariaDB), audited 26 Nov 2026.
 Method: code review of every route handler and service, plus automated tests (`tests/unit`, `tests/e2e`) that attack the running production build.
 
 ## 1. Identity protection model

@@ -42,7 +42,7 @@ export async function listStaff(auth: AuthContext, f: z.infer<typeof ListFilter>
       f.department ? { departmentId: f.department } : {},
       f.assigned === "me" ? { assignments: { some: { assigneeId: auth.userId, active: true } } } : {},
       f.kind ? { anonymous: f.kind === "anonymous" } : {},
-      f.q ? { OR: [{ reference: { contains: f.q.toUpperCase() } }, { title: { contains: f.q, mode: "insensitive" } }] } : {},
+      f.q ? { OR: [{ reference: { contains: f.q.toUpperCase() } }, { title: { contains: f.q } } /* MySQL utf8mb4_unicode_ci collation is already case-insensitive */] } : {},
     ],
   };
   const take = 25, page = f.page ?? 1;

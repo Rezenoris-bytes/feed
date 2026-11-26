@@ -1,23 +1,14 @@
-// Restores a backup made by scripts/backup.ts.
+// Restores a backup made by scripts/backup.ts (MySQL / MariaDB).
 //   npm run restore -- --verify [backupDir]     restore into a throwaway database, compare everything, then drop it (safe, run regularly)
 //   npm run restore -- --into-live <backupDir>  replace the live database and uploads (stop the app first!)
 // With no backupDir the newest backup is used.
-import { Client } from "pg";
-import { from as copyFrom } from "pg-copy-streams";
+import mysql from "mysql2/promise";
 import { execSync } from "node:child_process";
 import { copyFile, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { BACKUP_DIR, open, sha256, type Manifest } from "./backup-lib";
 
-// Parents before children so the restored data satisfies foreign keys.
-const ORDER = [
-  "roles", "permissions", "role_permissions", "departments", "users", "user_roles", "sessions", "employee_profiles",
-  "feedback_categories", "feedback_priorities", "feedback_submissions", "feedback_identity_mappings", "feedback_attachments",
-  "feedback_assignments", "feedback_status_history", "feedback_internal_notes", "feedback_messages", "notifications",
-  "audit_logs", "identity_access_logs", "system_settings",
-];
+type TableDump = { columns: string[]; rows: (string | null)[][] };
 
 async function main() {
   const args = process.argv.slice(2);
@@ -31,49 +22,50 @@ async function main() {
   const base = new URL(process.env.DATABASE_URL!);
   const liveDb = base.pathname.slice(1);
   const target = live ? liveDb : `${liveDb}_restore_test`;
-  const admin = new URL(base); admin.pathname = "/postgres";
   const targetUrl = new URL(base); targetUrl.pathname = "/" + target;
+  const serverUrl = new URL(base); serverUrl.pathname = "/";
 
   // 1. Decrypt + checksum every table before touching anything.
-  const data = new Map<string, Buffer>();
+  const data = new Map<string, TableDump>();
   for (const t of manifest.tables) {
-    const buf = open(await readFile(path.join(dir, "tables", t.name + ".bin.enc")));
+    const buf = open(await readFile(path.join(dir, "tables", t.name + ".json.enc")));
     if (sha256(buf) !== t.sha256) throw new Error(`Checksum mismatch in ${t.name}. Backup is corrupt`);
-    data.set(t.name, buf);
+    data.set(t.name, JSON.parse(buf.toString("utf8")));
   }
   console.log(`  ✓ ${data.size} tables decrypted and checksums match`);
 
-  // 2. Fresh database with the same schema.
-  const a = new Client({ connectionString: admin.toString() });
-  await a.connect();
-  await a.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [target]);
-  await a.query(`DROP DATABASE IF EXISTS "${target}"`);
-  await a.query(`CREATE DATABASE "${target}"`);
-  await a.end();
+  // 2. Fresh database with the same schema (migrations include the protection triggers).
+  const admin = await mysql.createConnection({ uri: serverUrl.toString() });
+  await admin.query(`DROP DATABASE IF EXISTS \`${target}\``);
+  await admin.query(`CREATE DATABASE \`${target}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await admin.end();
   execSync("npx prisma migrate deploy", { env: { ...process.env, DATABASE_URL: targetUrl.toString() }, stdio: "pipe" });
   console.log("  ✓ schema migrated");
 
-  // 3. Load data. replica mode skips triggers (append-only guards) during the bulk load only.
-  const db = new Client({ connectionString: targetUrl.toString() });
-  await db.connect();
-  await db.query("BEGIN");
-  await db.query("SET LOCAL session_replication_role = replica");
-  const names = [...ORDER.filter((n) => data.has(n)), ...[...data.keys()].filter((n) => !ORDER.includes(n))];
-  for (const n of names) await pipeline(Readable.from(data.get(n)!), db.query(copyFrom(`COPY "${n}" FROM STDIN WITH (FORMAT binary)`)));
-  await db.query("COMMIT");
+  // 3. Load data. FK checks off during the bulk load only (parents and children arrive in any order).
+  const db = await mysql.createConnection({ uri: targetUrl.toString(), dateStrings: true });
+  await db.query("SET FOREIGN_KEY_CHECKS = 0");
+  await db.beginTransaction();
+  for (const [name, dump] of data) {
+    const cols = dump.columns.map((c) => `\`${c}\``).join(", ");
+    for (let i = 0; i < dump.rows.length; i += 500) {
+      await db.query(`INSERT INTO \`${name}\` (${cols}) VALUES ?`, [dump.rows.slice(i, i + 500)]);
+    }
+  }
+  await db.commit();
+  await db.query("SET FOREIGN_KEY_CHECKS = 1");
 
-  // 4. Verify row counts.
+  // 4. Verify row counts and that the protection triggers exist.
   let ok = true;
   for (const t of manifest.tables) {
-    const { rows } = await db.query(`SELECT count(*)::int AS n FROM "${t.name}"`);
-    if (rows[0].n !== t.rows) { ok = false; console.error(`  ✗ ${t.name}: expected ${t.rows}, got ${rows[0].n}`); }
+    const [[r]] = await db.query<mysql.RowDataPacket[]>(`SELECT COUNT(*) AS n FROM \`${t.name}\``);
+    if (Number(r.n) !== t.rows) { ok = false; console.error(`  ✗ ${t.name}: expected ${t.rows}, got ${r.n}`); }
   }
-  // Append-only triggers must be active again after restore.
-  const trig = await db.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname LIKE '%append_only%' OR tgname = 'identity_mapping_immutable'");
-  if (trig.rows[0].n < 3) { ok = false; console.error("  ✗ audit protection triggers missing"); }
+  const [[trig]] = await db.query<mysql.RowDataPacket[]>("SELECT COUNT(*) AS n FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()");
+  if (Number(trig.n) < 7) { ok = false; console.error("  ✗ audit protection triggers missing"); }
   await db.end();
   if (!ok) throw new Error("Restore verification failed");
-  console.log(`  ✓ row counts match for all ${manifest.tables.length} tables; audit protections intact`);
+  console.log(`  ✓ row counts match for all ${manifest.tables.length} tables; ${trig.n} protection triggers in place`);
 
   // 5. Uploads
   for (const u of manifest.uploads) {
@@ -91,8 +83,8 @@ async function main() {
   console.log(`  ✓ ${manifest.uploads.length} uploaded files verified${live ? " and restored" : ""}`);
 
   if (!live) {
-    const c = new Client({ connectionString: admin.toString() }); await c.connect();
-    await c.query(`DROP DATABASE "${target}"`); await c.end();
+    const c = await mysql.createConnection({ uri: serverUrl.toString() });
+    await c.query(`DROP DATABASE \`${target}\``); await c.end();
     console.log("Restore test PASSED (test database removed).");
   } else console.log("Live restore complete.");
 }

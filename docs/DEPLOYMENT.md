@@ -17,8 +17,8 @@ copy .env.example .env      # then fill in every value (see section 3)
 ## 3. Environment (`.env`)
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | `postgresql://feed:<password>@127.0.0.1:55432/feed` |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Used by `npm run db` to create the cluster |
+| `DATABASE_URL` | `mysql://feed:<password>@127.0.0.1:3307/feed` (MySQL 8.0.16+ or MariaDB 10.4+) |
+| `MYSQL_BIN_DIR` | Folder with `mysqld`, used by `npm run db` (e.g. `C:\xampp\mysql\bin`). Not needed if you use an existing MySQL server |
 | `SESSION_SECRET` | 32-byte base64 |
 | `IDENTITY_ENCRYPTION_KEY` | 32-byte base64. **Losing it = identities unrecoverable** |
 | `FILE_ENCRYPTION_KEY` | 32-byte base64, for attachments |
@@ -34,7 +34,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ## 4. First start
 ```powershell
-npm run db                     # terminal 1: PostgreSQL (keep running)
+npm run db                     # terminal 1: local MySQL/MariaDB on 3307 (keep running); skip if you use an existing MySQL server
 npx prisma migrate deploy      # terminal 2
 npm run db:seed                # roles, categories, departments, starter accounts
 npm run build
@@ -70,7 +70,7 @@ feedback.yourcompany.com {
 }
 ```
 Office-only (LAN) use: `tls internal` in the Caddyfile, then install Caddy's root certificate on staff devices.
-Only expose port 443. Never expose 3000 or 55432.
+Only expose port 443. Never expose 3000 or the database port (3307/3306).
 
 ## 7. Backups
 ```powershell
@@ -137,3 +137,14 @@ npm run build; npx playwright test   # 40 end-to-end tests (needs the DB running
 The home-screen icon and name come from **System settings → Company logo / Company name**. A phone that already installed the app may take a day to update the icon; uninstall and reinstall to see it straight away.
 
 For real use by all employees, use HTTPS (section 6). Then no Chrome flag is needed and everyone gets the normal "Install" prompt.
+## 13. Using an existing MySQL server (instead of `npm run db`)
+1. Create a database and a user:
+   ```sql
+   CREATE DATABASE feed CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'feed'@'localhost' IDENTIFIED BY '<strong password>';
+   GRANT ALL PRIVILEGES ON feed.* TO 'feed'@'localhost';
+   ```
+   For `npm run restore -- --verify`, the user also needs `CREATE`/`DROP` on `feed_restore_test`.
+   For `prisma migrate dev` (development only), it also needs to create a temporary "shadow" database.
+2. Set `DATABASE_URL=mysql://feed:<password>@127.0.0.1:3306/feed`, then run `npx prisma migrate deploy` and `npm run db:seed`.
+3. The migrations create triggers. On MySQL with binary logging on, that may need `log_bin_trust_function_creators=1` or SUPER rights for the migration step.

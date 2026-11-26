@@ -1,6 +1,6 @@
 # Test Execution Report
 
-**Date:** 26 Nov 2026 · **Build:** production (`next build`) · **DB:** PostgreSQL 19 (embedded, local) · **Browser:** Microsoft Edge (desktop + Pixel 7 emulation)
+**Date:** 26 Nov 2026 · **Build:** production (`next build`) · **DB:** MySQL-compatible (MariaDB 10.4 from XAMPP, local; originally PostgreSQL 19) · **Browser:** Microsoft Edge (desktop + Pixel 7 emulation)
 
 | Suite | Command | Result |
 |---|---|---|
@@ -70,3 +70,7 @@ Bug found: `/anonymous`, `/track` and `/login` had been pre-built as static page
   - **Privacy suite (10):** device data planted in every header (User-Agent, X-Forwarded-For, X-Real-IP, Accept-Language, cookies), in the file name and in EXIF is found **nowhere** in any text column of any table; no owner or identity mapping; the DB refuses to add one; no reveal endpoint for anyone; legacy employee accounts can't sign in; old employee pages are 404; a tracking session opens only its own case and isn't a staff login.
   - The anonymous flow, security, workflow and UI suites were rewritten for login-free submissions, plus a white-theme check and a dropdown styling check.
 - Test cleanup verified: 0 leftover accounts or cases.
+## Re-run after moving from PostgreSQL to MySQL (26 Nov 2026)
+- Unit **41/41**, end-to-end **49/49** (run twice), backup + verified restore passed (21 tables, 7 protection triggers, 46 files).
+- All data was copied from PostgreSQL with row counts matching for every table.
+- **Bug found:** the old PostgreSQL data had 50 role links, 42 sessions, 14 profiles and 188 case rows belonging to deleted test records. The cause was an early version of the test cleanup, which switched off foreign-key enforcement. These rows were removed during the move. All 18 foreign keys were checked consistent, and the current cleanup no longer bypasses enforcement.

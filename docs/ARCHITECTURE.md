@@ -10,7 +10,7 @@
 | Font / look | **Inter**, dark-first zinc palette with teal accent (matches the supplied CRM screenshot: left sidebar, section groups, tabbed settings, bordered cards, dashed empty states) |
 | Motion | Framer Motion, honours `prefers-reduced-motion` |
 | Icons | lucide-react |
-| DB | PostgreSQL run from npm (`embedded-postgres`, no Docker), port 55432, data at `./storage/postgres` |
+| DB | **MySQL 8.0.16+ or MariaDB 10.4+** (Prisma `mysql` provider). Locally `npm run db` runs the server from an existing install (e.g. XAMPP) on port 3307, data at `./storage/mysql`, no Docker |
 | ORM | Prisma + versioned migrations |
 | Auth | Own session auth: bcrypt hashes, HttpOnly/SameSite=Strict/Secure cookies, DB-backed sessions (revocable), TOTP MFA (otplib) mandatory for Super Admin |
 | Validation | Zod on every route handler |
@@ -41,7 +41,7 @@ Deny-by-default: every handler calls `requirePermission(session, 'perm')`; no pe
   2. requires a reason (â‰¥20 chars),
   3. writes `identity_access_logs` in the same transaction (append-only; DB trigger blocks UPDATE/DELETE).
 - Employee "my submissions" lookup uses a separate keyed HMAC index (`owner_hmac = HMAC(user_id, key)`) so the employee can list their own cases without a plaintext join.
-- Postgres RLS + a separate DB role for the identity table as defence-in-depth.
+- Defence in depth in the database: MySQL triggers (SIGNAL) make audit/identity logs append-only and block identity links to anonymous cases; CHECK constraints enforce row shapes. In production, give the app user no DROP/ALTER/TRIGGER rights (MySQL triggers can't stop TRUNCATE).
 - Timestamps shown to HR are rounded to the day; no IP/UA stored on submissions.
 - Notifications/emails contain only reference + status, never content or names.
 
@@ -61,7 +61,7 @@ HR: dashboard, inbox (filters), assigned, investigation detail, notes, resolutio
 Super Admin: overview, all feedback, detail, identity management, identity audit, employees, departments, HR, reviewers, categories, reports, notifications, system config, security.
 
 ## Phases
-1. ✔ Plan + scaffold (this doc, Next.js, shadcn, PWA, local Postgres without Docker)
+1. ✔ Plan + scaffold (this doc, Next.js, shadcn, PWA, local database without Docker; switched to MySQL on 26 Nov 2026)
 2. ✔ App shell (sidebar, mobile bottom nav), Prisma schema + hardening migration, auth + MFA, RBAC, identity service
 3. ✔ Feedback APIs, workflow, messages, attachments (metadata stripped, encrypted)
 4. ✔ Dashboards, reports (CSV/PDF), admin management, notifications, accounts

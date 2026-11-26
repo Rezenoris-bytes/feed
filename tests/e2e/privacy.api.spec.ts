@@ -30,11 +30,12 @@ test.beforeAll(async () => {
 test("no device data is stored anywhere in the database (IP, user agent, language, cookies, file names, EXIF)", async () => {
   // Dump every text column of every table and search for the planted marker and IP.
   const tables = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
-    `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' AND data_type IN ('text','character varying','jsonb')`);
+    `SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name FROM information_schema.columns
+     WHERE TABLE_SCHEMA = DATABASE() AND DATA_TYPE IN ('char','varchar','text','mediumtext','longtext','json')`);
   for (const { table_name, column_name } of tables) {
-    const hits = await prisma.$queryRawUnsafe<{ n: number }[]>(
-      `SELECT count(*)::int AS n FROM "${table_name}" WHERE "${column_name}"::text LIKE $1 OR "${column_name}"::text LIKE $2`, `%${MARKER}%`, "%203.0.113.77%");
-    expect(hits[0].n, `${table_name}.${column_name}`).toBe(0);
+    const hits = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM \`${table_name}\` WHERE CAST(\`${column_name}\` AS CHAR) LIKE ? OR CAST(\`${column_name}\` AS CHAR) LIKE ?`, `%${MARKER}%`, "%203.0.113.77%");
+    expect(Number(hits[0].n), `${table_name}.${column_name}`).toBe(0);
   }
 });
 

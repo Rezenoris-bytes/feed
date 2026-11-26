@@ -5,7 +5,7 @@ Free and self-hosted. No cloud services and no Docker.
 ## First run
 1. `npm install`
 2. Copy `.env.example` to `.env` and fill in the secrets (the commands to generate them are in that file).
-3. `npm run db` starts PostgreSQL from `storage/postgres`. Keep this terminal open.
+3. `npm run db` starts a local MySQL-compatible server (MySQL 8 or MariaDB, e.g. from XAMPP, set `MYSQL_BIN_DIR`) on port 3307 with its data in `storage/mysql`. Keep this terminal open.
 4. `npx prisma migrate deploy`
 5. `npm run db:seed` creates roles, categories and departments, plus starter accounts. Their passwords are saved in `storage/initial-credentials.txt`.
 6. `npm run dev`, then open http://localhost:3000
