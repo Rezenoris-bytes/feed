@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
-    "start": "prisma migrate deploy && next start",
+    "build": "npm run db:setup && next build --webpack",
+    "start": "next start",
     "lint": "eslint",
     "db": "tsx scripts/db.ts",
     "db:migrate": "prisma migrate dev",
@@ -19,7 +19,9 @@
     "start:lan": "next start -H 0.0.0.0 -p 3000",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "postinstall": "prisma generate",
-    "start:app": "next start"
+    "start:app": "next start",
+    "db:setup": "prisma migrate deploy && tsx prisma/seed.ts --reference-only",
+    "build:app": "next build --webpack"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

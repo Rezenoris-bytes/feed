@@ -39,7 +39,9 @@ async function main() {
     await prisma.feedbackPriority.upsert({ where: { key }, update: {}, create: { key, name, rank } });
   for (const name of DEPARTMENTS) await prisma.department.upsert({ where: { name }, update: {}, create: { name } });
 
-  if ((await prisma.user.count()) > 0) return console.log("Reference data seeded. Users already exist â€” skipped accounts.");
+  // --reference-only (used during deploy builds): never create accounts, so no passwords end up in build logs or files.
+  if (process.argv.includes("--reference-only")) return console.log("Reference data seeded (roles, permissions, categories, priorities, departments).");
+  if ((await prisma.user.count()) > 0) return console.log("Reference data seeded. Users already exist, skipped accounts.");
 
   const ops = await prisma.department.findUniqueOrThrow({ where: { name: "Operations" } });
   const accounts: { email: string; name: string; role: RoleKey; emp?: string }[] = [
