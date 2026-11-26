@@ -148,3 +148,20 @@ For real use by all employees, use HTTPS (section 6). Then no Chrome flag is nee
    For `prisma migrate dev` (development only), it also needs to create a temporary "shadow" database.
 2. Set `DATABASE_URL=mysql://feed:<password>@127.0.0.1:3306/feed`, then run `npx prisma migrate deploy` and `npm run db:seed`.
 3. The migrations create triggers. On MySQL with binary logging on, that may need `log_bin_trust_function_creators=1` or SUPER rights for the migration step.
+## 14. Hostinger (Node.js web app from GitHub)
+1. **Database:** hPanel → Databases → MySQL. Create a database and user, and note the host, name, user and password.
+2. **Import the repository** `Rezenoris-bytes/feed`:
+   - **Branch:** the branch that has the app: `master` after merging PR #1, or `feature/feedback-system`.
+   - **Framework preset:** Next.js. **Node:** 22.x. **Root directory:** `./`.
+   - **Build command:** `npm run build`. **Package manager:** npm. **Output directory:** `.next`.
+   - Nothing else is needed. `npm install` generates the database client (postinstall), and `npm start` creates or updates the tables (`prisma migrate deploy`) before serving. The build itself doesn't need the database.
+3. **Environment variables:**
+   - `DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/DBNAME`
+   - `SESSION_SECRET`, `IDENTITY_ENCRYPTION_KEY`, `FILE_ENCRYPTION_KEY`, `BACKUP_ENCRYPTION_KEY`: new 32-byte base64 keys (section 3). Save them in a password manager.
+   - `UPLOAD_DIR` and `BRANDING_DIR`: folders outside the deployed app folder, so redeploys don't wipe attachments or the logo.
+   - `MAX_UPLOAD_MB=10`
+4. **First start:** the tables are created automatically. If it fails with a trigger or SUPER privilege error, the MySQL user isn't allowed to create triggers. Ask Hostinger support to enable it, or report the exact error.
+5. **First Super Admin** (SSH into the app folder):
+   - `npm run db:seed` creates roles, categories and departments.
+   - `npm run admin -- create you@company.com "Your Name"`
+6. **HTTPS:** Hostinger provides it on your domain, so phones get the normal "Install app" prompt.

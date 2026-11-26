@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "prisma migrate deploy && next start",
     "lint": "eslint",
     "db": "tsx scripts/db.ts",
     "db:migrate": "prisma migrate dev",
@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "test:all": "vitest run && playwright test",
     "start:lan": "next start -H 0.0.0.0 -p 3000",
-    "dev:lan": "next dev -H 0.0.0.0 -p 3000"
+    "dev:lan": "next dev -H 0.0.0.0 -p 3000",
+    "postinstall": "prisma generate",
+    "start:app": "next start"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

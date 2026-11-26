@@ -9,9 +9,16 @@ import { appIcons, getBranding } from "@/server/branding";
 
 const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
 
+// Settings (company name, logo) are read per request, never at build time, so the build doesn't need a database.
+export const dynamic = "force-dynamic";
+
 /** Tab icon, iPhone home-screen icon and app name follow the company logo and name from System settings. */
 export async function generateMetadata(): Promise<Metadata> {
-  const [company, branding] = await Promise.all([getSetting("company"), getBranding()]);
+  // If the database is briefly unavailable, fall back to the default name and icons instead of failing the page.
+  const [company, branding] = await Promise.all([
+    getSetting("company").catch(() => ({ name: "Feed", supportText: "" })),
+    getBranding().catch(() => ({ logoVersion: null })),
+  ]);
   const icons = appIcons(branding);
   const name = company.name || "Feed";
   return {
