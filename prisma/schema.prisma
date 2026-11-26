@@ -1,0 +1,315 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleKey {
+  SUPER_ADMIN
+  HR
+  REVIEWER
+  EMPLOYEE
+}
+
+enum FeedbackStatus {
+  SUBMITTED
+  RECEIVED
+  UNDER_REVIEW
+  ASSIGNED
+  INVESTIGATION
+  ACTION_REQUIRED
+  RESOLVED
+  CLOSED
+  REJECTED
+  DUPLICATE
+  ESCALATED
+  AWAITING_INFO
+}
+
+enum MessageAuthor {
+  EMPLOYEE
+  STAFF
+}
+
+// ---------- Authentication ----------
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  passwordHash   String
+  displayName    String
+  isActive       Boolean   @default(true)
+  mfaSecretEnc   String? // AES-GCM encrypted TOTP secret
+  mfaEnabled     Boolean   @default(false)
+  failedLogins   Int       @default(0)
+  lockedUntil    DateTime?
+  departmentId   String?   @db.Uuid
+  department     Department? @relation(fields: [departmentId], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  roles          UserRole[]
+  sessions       Session[]
+  profile        EmployeeProfile?
+  assignments    FeedbackAssignment[] @relation("assignee")
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         RoleKey          @unique
+  name        String
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id    String           @id @default(uuid()) @db.Uuid
+  key   String           @unique
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id          String    @id // sha256 of the cookie token, never the raw token
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mfaVerified Boolean   @default(false)
+  mfaAt       DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  users     User[]
+  feedback  FeedbackSubmission[]
+
+  @@map("departments")
+}
+
+model EmployeeProfile {
+  userId      String  @id @db.Uuid
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeNo  String  @unique
+  jobTitle    String?
+  phoneEnc    String? // encrypted
+
+  @@map("employee_profiles")
+}
+
+// ---------- Feedback (no user FK anywhere) ----------
+model FeedbackCategory {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String  @unique
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  sensitive Boolean @default(false) // e.g. harassment → auto high priority, HR-only
+  feedback  FeedbackSubmission[]
+
+  @@map("feedback_categories")
+}
+
+model FeedbackPriority {
+  id       String @id @default(uuid()) @db.Uuid
+  key      String @unique // LOW, MEDIUM, HIGH, CRITICAL
+  name     String
+  rank     Int
+  feedback FeedbackSubmission[]
+
+  @@map("feedback_priorities")
+}
+
+model FeedbackSubmission {
+  id           String         @id @default(uuid()) @db.Uuid
+  reference    String         @unique // random, non-sequential
+  ownerHmac    String? // HMAC(userId) so employee can list own items; not reversible. NULL for anonymous cases.
+  anonymous    Boolean        @default(false) // true = no identity recorded anywhere; tracked with a secret key
+  trackingKeyHash String? // HMAC of the one-time secret key (anonymous only); the key itself is never stored
+  title        String
+  description  String
+  categoryId   String         @db.Uuid
+  category     FeedbackCategory @relation(fields: [categoryId], references: [id])
+  priorityId   String         @db.Uuid
+  priority     FeedbackPriority @relation(fields: [priorityId], references: [id])
+  departmentId String?        @db.Uuid
+  department   Department?    @relation(fields: [departmentId], references: [id])
+  status       FeedbackStatus @default(SUBMITTED)
+  submittedOn  DateTime       @db.Date // day precision only, reduces timing correlation
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  resolvedAt   DateTime?
+
+  identity     FeedbackIdentityMapping?
+  attachments  FeedbackAttachment[]
+  assignments  FeedbackAssignment[]
+  history      FeedbackStatusHistory[]
+  notes        FeedbackInternalNote[]
+  messages     FeedbackMessage[]
+
+  @@index([ownerHmac])
+  @@index([anonymous])
+  @@index([status])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([submittedOn])
+  @@map("feedback_submissions")
+}
+
+// Only touched by src/server/identity.ts. RLS + separate DB role in migration.
+model FeedbackIdentityMapping {
+  feedbackId   String             @id @db.Uuid
+  feedback     FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Restrict)
+  userIdEnc    String // AES-256-GCM(userId)
+  createdAt    DateTime           @default(now())
+
+  @@map("feedback_identity_mappings")
+}
+
+model FeedbackAttachment {
+  id          String             @id @default(uuid()) @db.Uuid
+  feedbackId  String             @db.Uuid
+  feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  storageKey  String             @unique // random file name on disk
+  mimeType    String
+  sizeBytes   Int
+  label       String // "Attachment 1" — original filename is discarded
+  createdAt   DateTime           @default(now())
+
+  @@map("feedback_attachments")
+}
+
+model FeedbackAssignment {
+  id          String             @id @default(uuid()) @db.Uuid
+  feedbackId  String             @db.Uuid
+  feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  assigneeId  String             @db.Uuid
+  assignee    User               @relation("assignee", fields: [assigneeId], references: [id])
+  assignedById String            @db.Uuid
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+
+  @@index([assigneeId, active])
+  @@index([feedbackId])
+  @@map("feedback_assignments")
+}
+
+model FeedbackStatusHistory {
+  id         String             @id @default(uuid()) @db.Uuid
+  feedbackId String             @db.Uuid
+  feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  fromStatus FeedbackStatus?
+  toStatus   FeedbackStatus
+  actorId    String?            @db.Uuid // null when the employee (anonymous) acted
+  remarks    String?
+  createdAt  DateTime           @default(now())
+
+  @@index([feedbackId])
+  @@map("feedback_status_history")
+}
+
+model FeedbackInternalNote {
+  id         String             @id @default(uuid()) @db.Uuid
+  feedbackId String             @db.Uuid
+  feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  authorId   String             @db.Uuid
+  body       String
+  createdAt  DateTime           @default(now())
+
+  @@index([feedbackId])
+  @@map("feedback_internal_notes")
+}
+
+model FeedbackMessage {
+  id         String             @id @default(uuid()) @db.Uuid
+  feedbackId String             @db.Uuid
+  feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  author     MessageAuthor
+  staffId    String?            @db.Uuid // null for employee messages
+  body       String
+  createdAt  DateTime           @default(now())
+
+  @@index([feedbackId])
+  @@map("feedback_messages")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  text      String // reference + status only, never content or identity
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ---------- Audit (append-only, enforced by trigger) ----------
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model IdentityAccessLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String   @db.Uuid
+  feedbackId String   @db.Uuid
+  reason     String
+  outcome    String // GRANTED | DENIED
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("identity_access_logs")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
