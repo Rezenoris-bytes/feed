@@ -1,0 +1,16 @@
+import { Overview } from "@/components/dashboard/overview";
+import { guardPage } from "@/server/guard";
+import { getStats, rangeFor } from "@/server/stats";
+import { can } from "@/server/rbac";
+
+export default async function HrHome({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const auth = await guardPage(["HR", "REVIEWER"]);
+  const period = (await searchParams).period ?? "year";
+  const stats = await getStats(auth, rangeFor(period));
+  const hr = can(auth.roles, "feedback.read.all");
+  return (
+    <Overview title={hr ? "HR overview" : "Reviewer overview"}
+      description={hr ? "Feedback volume, status and trends. Identities are never shown." : "Cases in your department and those assigned to you."}
+      stats={stats} basePath="/hr" period={period} showDepartments={hr} />
+  );
+}
