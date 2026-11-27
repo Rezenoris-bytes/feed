@@ -1,21 +1,21 @@
+import { Search } from "lucide-react";
 import { PublicShell } from "@/components/shell/public-shell";
 import { TrackForm } from "@/components/feedback/track-form";
-import { getSetting } from "@/server/admin";
 
-// Reads live settings on every request (the anonymous switch must apply immediately).
 export const dynamic = "force-dynamic";
-
-export const metadata = { title: "Track anonymous feedback" };
+export const metadata = { title: "Track feedback" };
 
 export default async function TrackPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
-  const company = await getSetting("company");
   const { ref } = await searchParams;
   return (
-    <PublicShell company={company.name}>
+    <PublicShell>
       <div className="mx-auto max-w-md">
-        <h1 className="text-2xl font-semibold tracking-tight">Track anonymous feedback</h1>
-        <p className="mb-6 mt-1.5 text-muted-foreground">Enter the reference and secret key you saved when you submitted.</p>
-        <TrackForm initialRef={ref?.match(/^FB-[2-9A-Z-]{14}$/) ? ref : ""} />
+        <div className="rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+          <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Search className="size-5" /></span>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">Track feedback</h1>
+          <p className="mb-6 mt-1 text-sm text-muted-foreground">Use the reference and key you saved.</p>
+          <TrackForm initialRef={ref?.match(/^FB-[2-9A-Z-]{14}$/) ? ref : ""} />
+        </div>
       </div>
     </PublicShell>
   );

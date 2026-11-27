@@ -62,7 +62,7 @@ test("tracking: wrong key fails with the same message as an unknown reference", 
 
 test("tracking: right key opens the case; replies go both ways; internals stay hidden; Lock works", async () => {
   const hr = await as("hr");
-  await hr.post(`/api/cases/${caseId}`, { data: { action: "status", to: "RECEIVED" } });
+  await hr.post(`/api/cases/${caseId}`, { data: { action: "status", to: "IN_REVIEW" } });
   await hr.post(`/api/cases/${caseId}`, { data: { action: "message", body: "Thanks, we've taken the ladder out of use." } });
 
   const ctx = await track(reference.toLowerCase(), key.toLowerCase().replace(/-/g, " "));
@@ -91,7 +91,7 @@ test("tracking is rate limited per reference (brute force)", async () => {
 test("HR can filter by type; exports label anonymous cases", async () => {
   const hr = await as("hr");
   expect(await (await hr.get(`/hr/inbox?status=all&kind=anonymous&q=${reference}`)).text()).toContain(reference);
-  expect(await (await hr.get(`/hr/inbox?status=all&kind=confidential&q=${reference}`)).text()).toContain("No feedback found");
+  expect(await (await hr.get(`/hr/inbox?status=all&kind=confidential&q=${reference}`)).text()).toContain("Nothing here");
   expect(await (await hr.get("/api/reports?format=csv&period=year")).text()).toContain(`${reference},Anonymous`);
 });
 

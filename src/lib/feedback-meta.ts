@@ -1,41 +1,44 @@
 // Shared (client + server) labels and workflow rules.
-export const STATUSES = [
-  "SUBMITTED", "RECEIVED", "UNDER_REVIEW", "ASSIGNED", "INVESTIGATION", "ACTION_REQUIRED",
-  "RESOLVED", "CLOSED", "REJECTED", "DUPLICATE", "ESCALATED", "AWAITING_INFO",
-] as const;
+// Five simple statuses: Open → In review → (On hold) → Resolved → Closed.
+export const STATUSES = ["OPEN", "IN_REVIEW", "ON_HOLD", "RESOLVED", "CLOSED"] as const;
 export type Status = (typeof STATUSES)[number];
 
 export const STATUS_LABEL: Record<Status, string> = {
-  SUBMITTED: "Submitted", RECEIVED: "Received", UNDER_REVIEW: "Under review", ASSIGNED: "Assigned",
-  INVESTIGATION: "Investigation", ACTION_REQUIRED: "Action required", RESOLVED: "Resolved", CLOSED: "Closed",
-  REJECTED: "Rejected", DUPLICATE: "Duplicate", ESCALATED: "Escalated", AWAITING_INFO: "Awaiting information",
+  OPEN: "Open", IN_REVIEW: "In review", ON_HOLD: "On hold", RESOLVED: "Resolved", CLOSED: "Closed",
 };
 
-export const STATUS_TONE: Record<Status, "neutral" | "info" | "warn" | "good" | "bad"> = {
-  SUBMITTED: "info", RECEIVED: "info", UNDER_REVIEW: "info", ASSIGNED: "info", INVESTIGATION: "warn",
-  ACTION_REQUIRED: "warn", RESOLVED: "good", CLOSED: "neutral", REJECTED: "bad", DUPLICATE: "neutral",
-  ESCALATED: "bad", AWAITING_INFO: "warn",
+/** One short line per status, written for the person who sent the feedback. */
+export const STATUS_HINT: Record<Status, string> = {
+  OPEN: "Received. Waiting for the team.",
+  IN_REVIEW: "The team is looking into it.",
+  ON_HOLD: "Paused. The team may need more from you.",
+  RESOLVED: "Action taken.",
+  CLOSED: "This case is finished.",
 };
 
-/** Normal (HR) transitions. Super Admin may override to any status (recorded in the audit log). */
+export const STATUS_TONE: Record<Status, "open" | "review" | "hold" | "good" | "neutral"> = {
+  OPEN: "open", IN_REVIEW: "review", ON_HOLD: "hold", RESOLVED: "good", CLOSED: "neutral",
+};
+
+/** Main path shown as a progress bar. On hold is a pause within "In review". */
+export const STAGES: Status[] = ["OPEN", "IN_REVIEW", "RESOLVED", "CLOSED"];
+export function stageIndex(s: Status) {
+  return s === "ON_HOLD" ? 1 : STAGES.indexOf(s);
+}
+
+/** Allowed moves for HR. Super Admin may set any status (recorded in the audit log). */
 export const TRANSITIONS: Record<Status, Status[]> = {
-  SUBMITTED: ["RECEIVED", "UNDER_REVIEW", "REJECTED", "DUPLICATE"],
-  RECEIVED: ["UNDER_REVIEW", "REJECTED", "DUPLICATE"],
-  UNDER_REVIEW: ["ASSIGNED", "ACTION_REQUIRED", "AWAITING_INFO", "ESCALATED", "REJECTED", "DUPLICATE"],
-  ASSIGNED: ["INVESTIGATION", "AWAITING_INFO", "ESCALATED"],
-  INVESTIGATION: ["ACTION_REQUIRED", "RESOLVED", "AWAITING_INFO", "ESCALATED"],
-  ACTION_REQUIRED: ["RESOLVED", "INVESTIGATION", "ESCALATED"],
-  AWAITING_INFO: ["UNDER_REVIEW", "INVESTIGATION"],
-  ESCALATED: ["INVESTIGATION", "ACTION_REQUIRED", "RESOLVED"],
-  RESOLVED: ["CLOSED", "INVESTIGATION"],
+  OPEN: ["IN_REVIEW", "ON_HOLD", "RESOLVED", "CLOSED"],
+  IN_REVIEW: ["ON_HOLD", "RESOLVED", "CLOSED"],
+  ON_HOLD: ["IN_REVIEW", "RESOLVED", "CLOSED"],
+  RESOLVED: ["CLOSED", "IN_REVIEW"],
   CLOSED: [],
-  REJECTED: [],
-  DUPLICATE: [],
 };
 
-/** Reviewers may only move work forward within an investigation. */
-export const REVIEWER_TARGETS: Status[] = ["INVESTIGATION", "ACTION_REQUIRED", "AWAITING_INFO", "RESOLVED"];
-export const OPEN_STATUSES: Status[] = STATUSES.filter((s) => !["RESOLVED", "CLOSED", "REJECTED", "DUPLICATE"].includes(s));
+/** Reviewers can work a case but not close it. */
+export const REVIEWER_TARGETS: Status[] = ["IN_REVIEW", "ON_HOLD", "RESOLVED"];
+export const OPEN_STATUSES: Status[] = ["OPEN", "IN_REVIEW", "ON_HOLD"];
+export const isFinal = (s: string) => s === "CLOSED";
 
 export const ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 export const MAX_ATTACHMENTS = 5;

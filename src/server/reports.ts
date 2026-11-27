@@ -51,8 +51,8 @@ export async function toPdf(auth: AuthContext, range: Range, label: string) {
   text(`${label} · generated ${new Date().toISOString().slice(0, 10)} · confidential`, M, 10, font, mute); y -= 28;
 
   const k = stats.kpis;
-  const kpis: [string, string][] = [["Total", String(stats.total)], ["Pending", String(k.pending)], ["Investigating", String(k.investigating)],
-    ["Resolved", String(k.resolved)], ["Escalated", String(k.escalated)], ["Avg. resolution", k.avgResolutionDays === null ? "-" : `${k.avgResolutionDays} d`]];
+  const kpis: [string, string][] = [["Total", String(stats.total)], ["Open", String(k.open)], ["In review", String(k.inReview)],
+    ["On hold", String(k.onHold)], ["Resolved", String(k.resolved + k.closed)], ["Avg. time", k.avgResolutionDays === null ? "-" : `${k.avgResolutionDays} d`]];
   kpis.forEach(([l, v], i) => {
     const x = M + (i % 3) * 166, yy = y - Math.floor(i / 3) * 46;
     page.drawRectangle({ x, y: yy - 30, width: 156, height: 40, borderColor: line, borderWidth: 1 });

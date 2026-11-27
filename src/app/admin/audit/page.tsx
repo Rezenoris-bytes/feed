@@ -18,7 +18,7 @@ export default async function Audit() {
   const name = Object.fromEntries(users.map((u) => [u.id, u.displayName]));
   return (
     <>
-      <PageHeader title="Audit log" description="Sign-ins, case changes, exports and admin actions. Most recent 300. Entries can't be edited or deleted." />
+      <PageHeader title="Audit log" description="Latest 300 actions" />
       <LogTable cols={["Who", "Action", "Details"]} empty="Activity will appear here."
         rows={logs.map((l) => ({ id: l.id, at: l.createdAt, cells: [
           l.actorId ? name[l.actorId] ?? "Unknown account" : "System",

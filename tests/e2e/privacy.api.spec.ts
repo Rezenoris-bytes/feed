@@ -103,6 +103,6 @@ test("a tracking session only opens its own case and attachments", async () => {
 
 test("staff see the submission date only (no time of day)", async () => {
   const html = (await (await hr.get(`/hr/cases/${caseId}`)).text()).replace(/<!-- -->/g, "");
-  const m = html.match(/Submitted<\/div><div[^>]*>Submitter · ([^<]+)</);
+  const m = html.match(/>Open<\/div><div[^>]*>Sender · ([^<]+)</);
   expect(m?.[1]).toMatch(/^\d{1,2} \w{3} \d{4}$/);
 });

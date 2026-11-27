@@ -56,11 +56,11 @@ export async function getStats(auth: AuthContext, range: Range) {
   return {
     total,
     kpis: {
-      new: sum("SUBMITTED", "RECEIVED"),
-      pending: sum("SUBMITTED", "RECEIVED", "UNDER_REVIEW", "ASSIGNED", "AWAITING_INFO", "ACTION_REQUIRED"),
-      investigating: sum("INVESTIGATION"),
-      resolved: sum("RESOLVED", "CLOSED"),
-      escalated: sum("ESCALATED"),
+      open: sum("OPEN"),
+      inReview: sum("IN_REVIEW"),
+      onHold: sum("ON_HOLD"),
+      resolved: sum("RESOLVED"),
+      closed: sum("CLOSED"),
       avgResolutionDays: days.length ? Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10 : null,
     },
     byStatus: byStatus.map((r) => ({ name: STATUS_LABEL[r.status as Status], value: r._count })).sort((a, b) => b.value - a.value),

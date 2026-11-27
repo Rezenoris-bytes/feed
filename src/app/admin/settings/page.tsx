@@ -12,7 +12,7 @@ export default async function Settings() {
   const [company, anonymous, branding] = await Promise.all([getSetting("company"), getSetting("anonymous"), getBranding()]);
   return (
     <>
-      <PageHeader title="System settings" description="Organisation-wide configuration. Changes are recorded in the audit log." />
+      <PageHeader title="System settings" />
       <div className="grid max-w-2xl gap-6">
         <CompanyForm value={company} />
         <LogoForm logo={logoUrl(branding)} company={company.name} />

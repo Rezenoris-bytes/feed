@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, EyeOff, MessageSquarePlus, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, EyeOff, Lock, MessageSquarePlus, Search, UserX } from "lucide-react";
 import { PublicShell } from "@/components/shell/public-shell";
-import { Card, CardContent } from "@/components/ui/card";
 import { getSetting } from "@/server/admin";
 
 export const dynamic = "force-dynamic";
@@ -10,35 +9,46 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const company = await getSetting("company");
   return (
-    <PublicShell company={company.name}>
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Speak up safely</h1>
-        <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Raise a concern, report a problem or share an idea. No login, and nothing that identifies you is recorded.</p>
-      </div>
-      {company.supportText && <div className="mx-auto mb-6 max-w-2xl rounded-lg border bg-muted/40 p-4 text-sm">{company.supportText}</div>}
-      <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
-        <HomeCard href="/submit" icon={<MessageSquarePlus className="size-6" />} title="Submit feedback" text="Takes about two minutes. You'll get a reference and a secret key to follow up." primary />
-        <HomeCard href="/track" icon={<Search className="size-6" />} title="Track my feedback" text="See progress, read replies and add information using your reference and key." />
-      </div>
-      <Card className="mx-auto mt-8 max-w-2xl">
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-medium text-foreground"><ShieldCheck className="size-4 text-primary" /> How your privacy is protected</div>
-          <p className="flex gap-2"><EyeOff className="mt-0.5 size-4 shrink-0" /> No account, name, email, IP address or device details are stored. Nobody, including administrators, can find out who sent feedback.</p>
-          <p className="flex gap-2"><EyeOff className="mt-0.5 size-4 shrink-0" /> Location, author details and file names are removed from photos and PDFs you attach.</p>
-          <p className="flex gap-2"><EyeOff className="mt-0.5 size-4 shrink-0" /> What you write can still identify you. Leave out details only you would know.</p>
-        </CardContent>
-      </Card>
-      <p className="mt-8 text-center text-xs text-muted-foreground"><Link href="/login" className="hover:underline">Staff sign in</Link></p>
-    </PublicShell>
-  );
-}
+    <PublicShell>
+      <section className="relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-12 text-center sm:px-10 sm:py-16">
+        {/* soft brand glow */}
+        <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_50%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent)]" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+          <Lock className="size-3.5 text-primary" /> 100% anonymous
+        </span>
+        <h1 className="mx-auto mt-5 max-w-xl text-balance text-4xl font-bold tracking-tight sm:text-5xl">
+          Speak up. <span className="text-primary">Stay anonymous.</span>
+        </h1>
+        <p className="mx-auto mt-4 max-w-md text-balance text-muted-foreground">Share a concern or an idea. No login, no name.</p>
 
-function HomeCard({ href, icon, title, text, primary }: { href: string; icon: React.ReactNode; title: string; text: string; primary?: boolean }) {
-  return (
-    <Link href={href} className={`group rounded-xl border p-5 transition-colors hover:bg-accent/50 ${primary ? "border-primary/40 bg-primary/5" : ""}`}>
-      <div className="mb-3 text-primary">{icon}</div>
-      <div className="flex items-center gap-2 font-semibold">{title}<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></div>
-      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
-    </Link>
+        <div className="mx-auto mt-8 grid max-w-lg gap-3 sm:grid-cols-2">
+          <Link href="/submit" className="group flex items-center justify-between gap-3 rounded-2xl bg-primary px-5 py-4 text-left text-primary-foreground shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-xl">
+            <span className="flex items-center gap-3"><MessageSquarePlus className="size-5" /><span className="font-semibold">Give feedback</span></span>
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link href="/track" className="group flex items-center justify-between gap-3 rounded-2xl border bg-background px-5 py-4 text-left transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+            <span className="flex items-center gap-3"><Search className="size-5 text-primary" /><span className="font-semibold">Track feedback</span></span>
+            <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </section>
+
+      {company.supportText && <p className="mx-auto mt-6 max-w-xl rounded-xl border bg-muted/40 px-4 py-3 text-center text-sm">{company.supportText}</p>}
+
+      <ul className="mx-auto mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+        {[
+          { icon: UserX, title: "No login", text: "No account needed" },
+          { icon: EyeOff, title: "No tracking", text: "No name, IP or device" },
+          { icon: Lock, title: "Private files", text: "Photo data removed" },
+        ].map(({ icon: Icon, title, text }) => (
+          <li key={title} className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="size-4" /></span>
+            <span><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted-foreground">{text}</span></span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-10 text-center text-xs text-muted-foreground"><Link href="/login" className="hover:text-foreground hover:underline">Staff sign in</Link></p>
+    </PublicShell>
   );
 }

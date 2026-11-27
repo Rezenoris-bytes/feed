@@ -2,25 +2,25 @@ import { expect, test } from "@playwright/test";
 import { anon, as, caseIdFor, options, submit, track } from "./helpers";
 import { prisma } from "./fixtures";
 
-test("full lifecycle: anonymous submit → assign → investigate → ask → reply → resolve → close", async () => {
+test("full lifecycle: Open → (assign) In review → On hold → reply → Resolved → Closed → reopen", async () => {
   const [hr, rev, sup] = await Promise.all([as("hr"), as("reviewer"), as("super")]);
   const o = await options(hr);
   const { res, reference, key } = await submit(o, { title: "Lifecycle case" });
   expect(res.status()).toBe(201);
   const id = await caseIdFor(hr, reference);
   const act = (ctx: typeof hr, data: object) => ctx.post(`/api/cases/${id}`, { data });
+  const status = async () => (await prisma.feedbackSubmission.findUnique({ where: { id } }))!.status;
+  expect(await status()).toBe("OPEN");
 
-  expect((await act(hr, { action: "status", to: "RECEIVED" })).status()).toBe(200);
-  expect((await act(hr, { action: "status", to: "CLOSED" })).status()).toBe(400); // illegal jump (not a valid next step)
-
+  // Assigning an open case starts the review.
   const html = await (await hr.get(`/hr/cases/${id}`)).text();
   const reviewerId = html.match(/<option value="([0-9a-f-]{36})">E2E Ops Reviewer/)![1];
   expect((await act(hr, { action: "assign", assigneeId: reviewerId })).status()).toBe(200);
-  expect((await prisma.feedbackSubmission.findUnique({ where: { id } }))!.status).toBe("ASSIGNED");
+  expect(await status()).toBe("IN_REVIEW");
+  expect((await act(hr, { action: "status", to: "OPEN" })).status()).toBe(400); // can't go back to Open
 
-  expect((await act(rev, { action: "status", to: "INVESTIGATION" })).status()).toBe(200);
-  expect((await act(rev, { action: "status", to: "ESCALATED" })).status()).toBe(403); // reviewer can't escalate
-  expect((await act(rev, { action: "status", to: "AWAITING_INFO" })).status()).toBe(200);
+  expect((await act(rev, { action: "status", to: "CLOSED" })).status()).toBe(403); // reviewers can't close
+  expect((await act(rev, { action: "status", to: "ON_HOLD" })).status()).toBe(200);
   expect((await act(rev, { action: "message", body: "Which room exactly?" })).status()).toBe(200);
 
   const sender = await track(reference, key);
@@ -29,24 +29,21 @@ test("full lifecycle: anonymous submit → assign → investigate → ask → re
   expect(view).toContain("Feedback team");
   expect(view).not.toContain("E2E Ops Reviewer");
   expect((await sender.post("/api/anonymous/messages", { data: { reference, body: "Room 2.14" } })).status()).toBe(200);
-  expect((await prisma.feedbackSubmission.findUnique({ where: { id } }))!.status).toBe("UNDER_REVIEW"); // reply reopens review
+  expect(await status()).toBe("IN_REVIEW"); // a reply while on hold resumes the review
 
-  expect((await act(hr, { action: "status", to: "ESCALATED" })).status()).toBe(200);
   expect((await act(hr, { action: "status", to: "RESOLVED" })).status()).toBe(200);
   expect((await act(hr, { action: "status", to: "CLOSED" })).status()).toBe(200);
   expect((await sender.post("/api/anonymous/messages", { data: { reference, body: "thanks" } })).status()).toBe(400); // closed
+  expect((await act(hr, { action: "status", to: "IN_REVIEW" })).status()).toBe(400); // HR can't reopen a closed case
 
   // Super Admin override reopens with an audit record.
-  expect((await sup.post(`/api/cases/${id}`, { data: { action: "status", to: "INVESTIGATION" } })).status()).toBe(200);
+  expect((await sup.post(`/api/cases/${id}`, { data: { action: "status", to: "IN_REVIEW" } })).status()).toBe(200);
   expect(await prisma.auditLog.count({ where: { target: id, action: "feedback.status.override" } })).toBe(1);
 
   const history = await prisma.feedbackStatusHistory.findMany({ where: { feedbackId: id }, orderBy: { createdAt: "asc" } });
-  expect(history.map((h) => h.toStatus)).toEqual([
-    "SUBMITTED", "RECEIVED", "ASSIGNED", "INVESTIGATION", "AWAITING_INFO", "UNDER_REVIEW", "ESCALATED", "RESOLVED", "CLOSED", "INVESTIGATION",
-  ]);
+  expect(history.map((h) => h.toStatus)).toEqual(["OPEN", "IN_REVIEW", "ON_HOLD", "IN_REVIEW", "RESOLVED", "CLOSED", "IN_REVIEW"]);
   expect(history[0].actorId).toBeNull();
 });
-
 test("sensitive categories are raised to High and hidden from department reviewers", async () => {
   const [hr, rev] = await Promise.all([as("hr"), as("reviewer")]);
   const { reference } = await submit(await options(hr), { title: "Sensitive report", category: "Harassment or misconduct" });

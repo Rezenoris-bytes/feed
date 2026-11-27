@@ -8,7 +8,7 @@ export default async function Account() {
   const others = await prisma.session.count({ where: { userId: auth.userId, id: { not: auth.sessionId }, expiresAt: { gt: new Date() } } });
   return (
     <>
-      <PageHeader title="My account" description={`Signed in as ${auth.displayName}.`} />
+      <PageHeader title="My account" description={auth.displayName} />
       <SecurityPanel otherSessions={others} />
     </>
   );

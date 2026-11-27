@@ -81,7 +81,7 @@ export async function submitAnonymous(input: z.infer<typeof AnonSubmitInput>, fi
       title: input.title, description: input.description, categoryId: category.id, priorityId,
       departmentId: input.departmentId ?? null, submittedOn: today,
       attachments: { create: stored.map((s, i) => ({ ...s, label: `Attachment ${i + 1}` })) },
-      history: { create: { toStatus: "SUBMITTED", actorId: null } },
+      history: { create: { toStatus: "OPEN", actorId: null } },
     },
   });
   const high = category.sensitive || priority.rank >= 3;
@@ -153,12 +153,13 @@ export async function anonymousMessage(reference: string, body: string) {
   if (!id) throw new HttpError(401, "Your tracking session expired. Enter your reference and key again.");
   const fb = await prisma.feedbackSubmission.findFirst({ where: { id, reference, anonymous: true } });
   if (!fb) throw notFound();
-  if (["CLOSED", "REJECTED", "DUPLICATE"].includes(fb.status)) throw new HttpError(400, "This case is closed");
+  if (fb.status === "CLOSED") throw new HttpError(400, "This case is closed");
   if (!rateLimit("anonmsg:" + id, 20, 60 * 60_000)) throw new HttpError(429, "Too many messages. Try again later.");
   await prisma.$transaction(async (tx) => {
     await tx.feedbackMessage.create({ data: { feedbackId: fb.id, author: "EMPLOYEE", body } });
-    if (fb.status === "AWAITING_INFO")
-      await tx.feedbackSubmission.update({ where: { id: fb.id }, data: { status: "UNDER_REVIEW", history: { create: { fromStatus: "AWAITING_INFO", toStatus: "UNDER_REVIEW", actorId: null, remarks: "Submitter provided more information" } } } });
+    // A reply while the case is on hold puts it back in review.
+    if (fb.status === "ON_HOLD")
+      await tx.feedbackSubmission.update({ where: { id: fb.id }, data: { status: "IN_REVIEW", history: { create: { fromStatus: "ON_HOLD", toStatus: "IN_REVIEW", actorId: null, remarks: "Sender replied" } } } });
   });
   const assignees = await prisma.feedbackAssignment.findMany({ where: { feedbackId: fb.id, active: true }, select: { assigneeId: true } });
   for (const a of assignees) await notify(a.assigneeId, "feedback.message", `New message on ${fb.reference}`, `/hr/cases/${fb.id}`);

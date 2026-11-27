@@ -7,5 +7,5 @@ export default async function HrCase({ params }: { params: Promise<{ id: string 
   const auth = await guardPage(["HR", "REVIEWER"]);
   const { id } = await params;
   const [fb, staff] = await Promise.all([orNotFound(getStaff(auth, id)), assignableStaff()]);
-  return <CaseDetail fb={fb} auth={auth} staff={staff} />;
+  return <CaseDetail fb={fb} auth={auth} staff={staff} backHref="/hr/inbox" />;
 }

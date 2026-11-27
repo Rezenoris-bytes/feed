@@ -18,7 +18,7 @@ export default async function Staff() {
   ]);
   return (
     <>
-      <PageHeader title="HR & reviewers" description="Staff who handle feedback. None of them can see who submitted it.">
+      <PageHeader title="HR & reviewers" description="People who handle feedback">
         <CreateUserButton role="STAFF" departments={departments} label="Add staff member" />
       </PageHeader>
       <UserTable extraLabel="Open cases" rows={users.map((u) => {

@@ -7,7 +7,7 @@ const noHorizontalScroll = async (page: import("@playwright/test").Page) =>
 
 test("public home is installable, white theme, and fits the screen", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Speak up safely" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Speak up/ })).toBeVisible();
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", /manifest/);
   const manifest = await (await page.request.get("/manifest.webmanifest")).json();
   expect(manifest.display).toBe("standalone");
@@ -25,25 +25,25 @@ test("public home is installable, white theme, and fits the screen", async ({ pa
 
 test("employee: submit without login, save key, then track the case", async ({ page }, info) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /Submit feedback/ }).click();
-  await expect(page.getByRole("heading", { name: "Submit feedback" })).toBeVisible();
+  await page.getByRole("link", { name: /Give feedback/ }).click();
+  await expect(page.getByRole("heading", { name: "Give feedback" })).toBeVisible();
   await noHorizontalScroll(page);
-  await page.getByLabel("What is this about?").selectOption({ label: "Suggestion" });
+  await page.getByRole("radio", { name: "Suggestion" }).click();
   await page.getByRole("radio", { name: "Low" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Title").fill(`[e2e] UI ${info.project.name}`);
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
-  await page.getByLabel("Describe what happened").fill("It would help to have a second water dispenser near the loading bay.");
+  await page.getByLabel("What happened?").fill("It would help to have a second water dispenser near the loading bay.");
   const png = await sharp({ create: { width: 10, height: 10, channels: 3, background: "#123" } }).png().toBuffer();
   await page.locator("#files").setInputFiles({ name: "my_photo.png", mimeType: "image/png", buffer: png });
   await expect(page.getByText("Attachment 1")).toBeVisible();
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Nobody, including administrators")).toBeVisible();
-  await page.getByRole("button", { name: "Submit feedback" }).click();
+  await page.getByRole("button", { name: "Send feedback" }).click();
   await expect(page.getByRole("heading", { name: "Sent anonymously" })).toBeVisible({ timeout: 30_000 });
   const ref = (await page.locator("dd").nth(0).textContent())!.trim();
   const key = (await page.locator("dd").nth(1).textContent())!.trim();
-  await page.getByRole("button", { name: "confirm you have" }).click();
+  await page.getByRole("button", { name: "I took a screenshot" }).click();
   await page.getByRole("link", { name: /Go to tracking/ }).click();
   await page.getByLabel("Reference").fill(ref);
   await page.getByLabel("Secret key").fill(key);
@@ -112,11 +112,13 @@ test.describe("HR", () => {
     await expect(page.getByText("Monthly trend")).toBeVisible();
     await expect(page.locator(".recharts-surface").first()).toBeVisible();
     await page.goto("/hr/inbox?status=all");
-    await expect(page.getByRole("heading", { name: "Feedback inbox" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Status" }).getByRole("link", { name: /In review/ })).toBeVisible(); // status tabs
     await noHorizontalScroll(page);
-    const select = page.locator('select[name="status"]');
+    await page.getByText("Filters").click();
+    const select = page.locator('select[name="category"]');
     expect(await select.evaluate((el) => getComputedStyle(el).appearance)).toBe("none");
-    await expect(page.locator('select[name="status"] + svg')).toBeVisible();
+    await expect(page.locator('select[name="category"] + svg')).toBeVisible();
     const xss = page.getByText("<img src=x onerror=alert(1)>", { exact: false }).first();
     if (await xss.count()) { await xss.click(); await page.waitForLoadState("networkidle"); }
     expect(alerted).toBe(false);

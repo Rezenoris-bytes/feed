@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { STATUSES, STATUS_LABEL, type Status } from "@/lib/feedback-meta";
-import { NativeSelect } from "./bits";
+import { NativeSelect, TONE_DOT, toneOf } from "./bits";
 
 async function act(id: string, body: object) {
   const res = await fetch(`/api/cases/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -14,34 +14,32 @@ async function act(id: string, body: object) {
   if (!res.ok) throw new Error(d.error ?? "Action failed");
 }
 
+/** One tap per status. Disabled buttons are moves not allowed from here (Super Admin may override any). */
 export function StatusAction({ id, current, targets, canOverride }: { id: string; current: Status; targets: Status[]; canOverride: boolean }) {
   const router = useRouter();
-  const options = canOverride ? STATUSES.filter((s) => s !== current) : targets;
-  const [to, setTo] = useState<Status | "">("");
-  const [busy, setBusy] = useState(false);
-  const override = !!to && canOverride && !targets.includes(to);
-
-  if (options.length === 0) return <p className="text-sm text-muted-foreground">This case is final. No further status changes.</p>;
+  const [busy, setBusy] = useState<Status | null>(null);
+  async function move(to: Status) {
+    setBusy(to);
+    try { await act(id, { action: "status", to }); toast.success(`Moved to ${STATUS_LABEL[to]}`); router.refresh(); }
+    catch (e) { toast.error((e as Error).message); }
+    setBusy(null);
+  }
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <Label htmlFor="to">Move to</Label>
-        <NativeSelect id="to" value={to} onChange={(e) => setTo(e.target.value as Status)}>
-          <option value="" disabled>Choose status</option>
-          {targets.length > 0 && <optgroup label="Next steps">{targets.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}</optgroup>}
-          {canOverride && <optgroup label="Override (Super Admin)">{options.filter((s) => !targets.includes(s)).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}</optgroup>}
-        </NativeSelect>
-      </div>
-      {override && <p className="text-xs text-amber-700 dark:text-amber-300">This is an override and will be recorded in the audit log.</p>}
-      <Button className="w-full" disabled={!to || busy}
-        onClick={async () => {
-          setBusy(true);
-          try { await act(id, { action: "status", to }); toast.success("Status updated"); setTo(""); router.refresh(); }
-          catch (e) { toast.error((e as Error).message); }
-          setBusy(false);
-        }}>
-        {busy && <Loader2 className="animate-spin" />} Update status
-      </Button>
+    <div role="group" aria-label="Set status" className="grid grid-cols-2 gap-2">
+      {STATUSES.map((s) => {
+        const isCurrent = s === current;
+        const allowed = targets.includes(s) || (canOverride && !isCurrent);
+        return (
+          <button key={s} type="button" disabled={isCurrent || !allowed || !!busy} onClick={() => move(s)} aria-pressed={isCurrent}
+            className={cn("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition",
+              isCurrent ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30" : allowed ? "hover:border-primary/40 hover:bg-accent" : "opacity-40",
+              s === "CLOSED" && "col-span-2")}>
+            {busy === s ? <Loader2 className="size-3.5 animate-spin" /> : <span className={cn("size-2 rounded-full", TONE_DOT[toneOf(s)])} />}
+            {STATUS_LABEL[s]}
+            {isCurrent && <span className="ml-auto text-[10px] font-normal uppercase tracking-wide">Now</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -53,7 +51,7 @@ export function AssignAction({ id, staff, currentId }: { id: string; staff: { id
   return (
     <div className="flex gap-2">
       <NativeSelect value={who} onChange={(e) => setWho(e.target.value)} aria-label="Assign to">
-        <option value="" disabled>Assign to…</option>
+        <option value="" disabled>{currentId ? "Reassign to…" : "Assign to…"}</option>
         {staff.filter((s) => s.id !== currentId).map((s) => <option key={s.id} value={s.id}>{s.displayName}{s.department ? ` · ${s.department.name}` : ""}</option>)}
       </NativeSelect>
       <Button variant="secondary" disabled={!who || busy} onClick={async () => {

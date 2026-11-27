@@ -10,7 +10,7 @@ export default async function Categories() {
   const rows = await prisma.feedbackCategory.findMany({ orderBy: { sortOrder: "asc" }, include: { _count: { select: { feedback: true } } } });
   return (
     <>
-      <PageHeader title="Categories" description="What employees can choose when submitting. Sensitive categories are raised to High priority and hidden from department reviewers unless assigned." />
+      <PageHeader title="Categories" description="Topics employees can pick" />
       <div className="mb-4"><AddNamedItem kind="category" placeholder="New category name" /></div>
       <Card className="p-0">
         <Table>

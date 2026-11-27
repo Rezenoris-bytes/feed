@@ -1,84 +1,127 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, EyeOff, Lock } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, Lock, Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { STATUSES, STATUS_LABEL } from "@/lib/feedback-meta";
-import { EmptyState, NativeSelect, StatusBadge, fmtDate } from "./bits";
-import type { listStaff, formOptions } from "@/server/feedback";
+import { STATUS_LABEL, type Status } from "@/lib/feedback-meta";
+import { EmptyState, NativeSelect, StatusBadge, TONE_DOT, categoryIcon, fmtDate, toneOf } from "./bits";
+import type { listStaff, formOptions, statusCounts } from "@/server/feedback";
 
 type Data = Awaited<ReturnType<typeof listStaff>>;
 type Opts = Awaited<ReturnType<typeof formOptions>>;
-const PRI_TONE = ["", "text-muted-foreground", "text-foreground", "text-amber-700 dark:text-amber-300", "text-rose-700 dark:text-rose-300"];
+type Counts = Awaited<ReturnType<typeof statusCounts>>;
 
-export function CaseList({ data, opts, basePath, filters, showFilters = true }: {
-  data: Data; opts: Opts; basePath: string; filters: Record<string, string | undefined>; showFilters?: boolean;
+const TABS: { key: string; label: string }[] = [
+  { key: "open", label: "Active" }, { key: "OPEN", label: STATUS_LABEL.OPEN }, { key: "IN_REVIEW", label: STATUS_LABEL.IN_REVIEW },
+  { key: "ON_HOLD", label: STATUS_LABEL.ON_HOLD }, { key: "RESOLVED", label: STATUS_LABEL.RESOLVED }, { key: "CLOSED", label: STATUS_LABEL.CLOSED },
+  { key: "all", label: "All" },
+];
+const PRI_CHIP: Record<number, string> = {
+  3: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  4: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+};
+
+export function CaseList({ data, opts, basePath, filters, counts }: {
+  data: Data; opts: Opts; basePath: string; filters: Record<string, string | undefined>; counts: Counts;
 }) {
+  const status = filters.status ?? "open";
   const qs = (patch: Record<string, string | undefined>) => {
-    const p = new URLSearchParams(Object.entries({ ...filters, ...patch }).filter(([, v]) => v) as [string, string][]);
-    return "?" + p.toString();
+    const merged: Record<string, string | undefined> = { ...filters, page: undefined, ...patch };
+    const p = new URLSearchParams(Object.entries(merged).filter((e): e is [string, string] => !!e[1]));
+    return `${basePath}?${p.toString()}`;
   };
   const caseHref = basePath.startsWith("/admin") ? "/admin/feedback/" : "/hr/cases/";
+  const activeFilters = [filters.category, filters.priority, filters.department].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
-      {showFilters && (
-        <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_150px_170px_130px_150px_140px_auto]" action={basePath}>
-          <Input name="q" defaultValue={filters.q} placeholder="Search reference or title" />
-          <NativeSelect name="status" defaultValue={filters.status ?? "open"}>
-            <option value="open">Open</option><option value="all">All statuses</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-          </NativeSelect>
-          <NativeSelect name="category" defaultValue={filters.category ?? ""}>
-            <option value="">All categories</option>{opts.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </NativeSelect>
-          <NativeSelect name="priority" defaultValue={filters.priority ?? ""}>
-            <option value="">Any priority</option>{opts.priorities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </NativeSelect>
-          <NativeSelect name="department" defaultValue={filters.department ?? ""}>
-            <option value="">All departments</option>{opts.departments.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </NativeSelect>
-          <NativeSelect name="kind" defaultValue={filters.kind ?? ""}>
-            <option value="">All types</option><option value="confidential">Confidential</option><option value="anonymous">Anonymous</option>
-          </NativeSelect>
-          <Button type="submit" variant="secondary">Filter</Button>
-        </form>
-      )}
+      {/* status tabs */}
+      <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Status">
+        {TABS.map((t) => {
+          const on = status === t.key;
+          const n = counts[t.key as keyof Counts];
+          return (
+            <Link key={t.key} href={qs({ status: t.key })} aria-current={on ? "page" : undefined}
+              className={cn("flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+                on ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>
+              {t.key.length > 4 && t.key === t.key.toUpperCase() && <span className={cn("size-1.5 rounded-full", TONE_DOT[toneOf(t.key)])} />}
+              {t.label}
+              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", on ? "bg-primary-foreground/20" : "bg-muted")}>{n}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* search + optional filters */}
+      <form action={basePath} className="space-y-2">
+        <input type="hidden" name="status" value={status} />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input name="q" defaultValue={filters.q} placeholder="Search title or FB-…" className="pl-8" />
+          </div>
+          <Button type="submit" variant="secondary">Search</Button>
+        </div>
+        <details className="group" open={activeFilters > 0}>
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <SlidersHorizontal className="size-3.5" /> Filters{activeFilters > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{activeFilters}</span>}
+          </summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            <NativeSelect name="category" defaultValue={filters.category ?? ""} aria-label="Category">
+              <option value="">All topics</option>{opts.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </NativeSelect>
+            <NativeSelect name="priority" defaultValue={filters.priority ?? ""} aria-label="Priority">
+              <option value="">Any priority</option>{opts.priorities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </NativeSelect>
+            <NativeSelect name="department" defaultValue={filters.department ?? ""} aria-label="Department">
+              <option value="">All departments</option>{opts.departments.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </NativeSelect>
+          </div>
+        </details>
+      </form>
 
       {data.rows.length === 0 ? (
-        <EmptyState title="No feedback found" text="Nothing matches these filters yet." />
+        <EmptyState title="Nothing here" text="No feedback matches." />
       ) : (
-        <Card className="divide-y p-0">
-          {data.rows.map((f) => (
-            <Link key={f.id} href={caseHref + f.id} className="flex flex-col gap-2 px-4 py-3.5 transition-colors hover:bg-accent/50 sm:flex-row sm:items-center sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 truncate font-medium">
-                  {f.category.sensitive && <Lock className="size-3.5 shrink-0 text-rose-700 dark:text-rose-300" aria-label="Sensitive" />}
-                  {f.anonymous && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Anonymous" />}
-                  <span className="truncate">{f.title}</span>
-                </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                  <span className="font-mono">{f.reference}</span>{f.anonymous && <span>· Anonymous</span>}<span>· {f.category.name}</span>
-                  {f.department && <span>· {f.department.name}</span>}<span>· {fmtDate(f.submittedOn)}</span>
-                  {f.assignments[0] && <span>· {f.assignments[0].assignee.displayName}</span>}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={cn("text-xs font-medium", PRI_TONE[f.priority.rank])}>{f.priority.name}</span>
-                <StatusBadge status={f.status} />
-              </div>
-            </Link>
-          ))}
-        </Card>
+        <ul className="space-y-2">
+          {data.rows.map((f) => {
+            const Icon = categoryIcon(f.category.name);
+            return (
+              <li key={f.id}>
+                <Link href={caseHref + f.id} className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border bg-card p-3 pl-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:gap-4">
+                  <span className={cn("absolute inset-y-0 left-0 w-1", TONE_DOT[toneOf(f.status)])} aria-hidden />
+                  <span className="hidden size-10 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground group-hover:text-primary sm:grid"><Icon className="size-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 truncate font-medium">
+                      {f.category.sensitive && <Lock className="size-3.5 shrink-0 text-rose-600 dark:text-rose-300" aria-label="Sensitive" />}
+                      <span className="truncate">{f.title}</span>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <span className="font-mono">{f.reference}</span> · {f.category.name}{f.department ? ` · ${f.department.name}` : ""} · {fmtDate(f.submittedOn)}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+                    {PRI_CHIP[f.priority.rank] && <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", PRI_CHIP[f.priority.rank])}>{f.priority.name}</span>}
+                    <StatusBadge status={f.status as Status} />
+                    {f.assignments[0] && (
+                      <span title={f.assignments[0].assignee.displayName} className="hidden size-7 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary sm:grid">
+                        {f.assignments[0].assignee.displayName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {data.pages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{data.total} results · page {data.page} of {data.pages}</span>
+          <span>{data.page} / {data.pages}</span>
           <div className="flex gap-2">
-            <Link aria-disabled={data.page <= 1} href={qs({ page: String(data.page - 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), data.page <= 1 && "pointer-events-none opacity-50")}><ChevronLeft /> Prev</Link>
-            <Link aria-disabled={data.page >= data.pages} href={qs({ page: String(data.page + 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), data.page >= data.pages && "pointer-events-none opacity-50")}>Next <ChevronRight /></Link>
+            <Link aria-disabled={data.page <= 1} href={qs({ status, page: String(data.page - 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), data.page <= 1 && "pointer-events-none opacity-50")}><ChevronLeft /> Prev</Link>
+            <Link aria-disabled={data.page >= data.pages} href={qs({ status, page: String(data.page + 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }), data.page >= data.pages && "pointer-events-none opacity-50")}>Next <ChevronRight /></Link>
           </div>
         </div>
       )}

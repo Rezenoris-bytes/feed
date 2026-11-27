@@ -9,8 +9,6 @@ export default async function HrHome({ searchParams }: { searchParams: Promise<{
   const stats = await getStats(auth, rangeFor(period));
   const hr = can(auth.roles, "feedback.read.all");
   return (
-    <Overview title={hr ? "HR overview" : "Reviewer overview"}
-      description={hr ? "Feedback volume, status and trends. Identities are never shown." : "Cases in your department and those assigned to you."}
-      stats={stats} basePath="/hr" period={period} showDepartments={hr} />
+    <Overview title={hr ? "Overview" : "My cases"} stats={stats} basePath="/hr" period={period} showDepartments={hr} inboxPath="/hr/inbox" />
   );
 }

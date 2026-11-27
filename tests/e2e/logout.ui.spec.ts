@@ -14,7 +14,7 @@ test("signing out then pressing Back does not show the staff screen", async ({ p
   // Navigate the way people do: by clicking the sidebar (in-app navigation, pages kept in the app's memory).
   await page.waitForLoadState("networkidle");
   await page.locator('a[href="/hr/inbox"]:visible').first().click(); // sidebar on desktop, bottom bar on phones
-  await expect(page.getByRole("heading", { name: "Feedback inbox" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
   await page.locator('a[href="/hr/assigned"]:visible').first().click();
   await expect(page.getByRole("heading", { name: "Assigned to me" })).toBeVisible();
 
@@ -25,11 +25,11 @@ test("signing out then pressing Back does not show the staff screen", async ({ p
   await page.waitForLoadState("networkidle");
   // Must end on the sign-in page, with no inbox content visible.
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole("heading", { name: "Feedback inbox" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Inbox" })).toHaveCount(0);
 
   await page.goForward().catch(() => {});
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Feedback inbox" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Inbox" })).toHaveCount(0);
 });
 
 test("locking a tracked case then pressing Back does not show the case", async ({ page }, info) => {

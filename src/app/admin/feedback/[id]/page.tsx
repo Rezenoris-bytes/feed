@@ -7,5 +7,5 @@ export default async function AdminCase({ params }: { params: Promise<{ id: stri
   const auth = await guardPage(["SUPER_ADMIN"]);
   const { id } = await params;
   const [fb, staff] = await Promise.all([orNotFound(getStaff(auth, id)), assignableStaff()]);
-  return <CaseDetail fb={fb} auth={auth} staff={staff} />;
+  return <CaseDetail fb={fb} auth={auth} staff={staff} backHref="/admin/feedback" />;
 }

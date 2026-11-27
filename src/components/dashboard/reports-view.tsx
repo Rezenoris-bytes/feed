@@ -33,7 +33,7 @@ function Breakdown({ title, data, total }: { title: string; data: { name: string
 export function ReportsView({ stats, period, label, basePath }: { stats: Stats; period: string; label: string; basePath: string }) {
   return (
     <>
-      <PageHeader title="Reports" description={`${label}. Exports contain case metadata only. No descriptions, messages or identities.`}>
+      <PageHeader title="Reports" description={label}>
         <div className="flex gap-2">
           <a href={`/api/reports?format=csv&period=${period}`} className={buttonVariants({ variant: "outline" })}><FileSpreadsheet /> CSV</a>
           <a href={`/api/reports?format=pdf&period=${period}`} className={buttonVariants()}><Download /> PDF</a>
@@ -45,7 +45,7 @@ export function ReportsView({ stats, period, label, basePath }: { stats: Stats; 
         ))}
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {([["Total", stats.total], ["Pending", stats.kpis.pending], ["Investigating", stats.kpis.investigating], ["Resolved", stats.kpis.resolved], ["Escalated", stats.kpis.escalated], ["Avg. days to resolve", stats.kpis.avgResolutionDays ?? "—"]] as const).map(([l, v]) => (
+        {([["Total", stats.total], ["Open", stats.kpis.open], ["In review", stats.kpis.inReview], ["On hold", stats.kpis.onHold], ["Resolved", stats.kpis.resolved + stats.kpis.closed], ["Avg. days to resolve", stats.kpis.avgResolutionDays ?? "—"]] as const).map(([l, v]) => (
           <Card key={l} className="gap-1 p-4"><div className="text-xs text-muted-foreground">{l}</div><div className="text-xl font-semibold tabular-nums">{v}</div></Card>
         ))}
       </div>

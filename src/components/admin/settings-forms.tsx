@@ -33,11 +33,10 @@ export function CompanyForm({ value }: { value: { name: string; supportText: str
 }
 
 const EVENTS = [
-  ["newFeedback", "New feedback", "HR and Super Admin when something is submitted"],
-  ["highPriority", "High-priority feedback", "Sensitive categories, High or Critical priority"],
-  ["escalation", "Escalations", "Super Admin when a case is escalated"],
-  ["assignment", "Assignments", "The reviewer a case is assigned to"],
-  ["messages", "Submitter replies", "The assigned reviewer when the submitter adds information"],
+  ["newFeedback", "New feedback", "When something is sent"],
+  ["highPriority", "High-priority feedback", "Sensitive, High or Critical"],
+  ["assignment", "Assignments", "To the assigned reviewer"],
+  ["messages", "Sender replies", "To the assigned reviewer"],
 ] as const;
 type N = Record<(typeof EVENTS)[number][0], boolean>;
 

@@ -17,7 +17,7 @@ export default async function Security() {
   ]);
   return (
     <>
-      <PageHeader title="Security" description="Your account security and system-wide protections." />
+      <PageHeader title="Security" />
       <MfaPolicyForm required={mfaRequired} enrolled={me.mfaEnabled} />
       <Card className="mb-6">
         <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /> Protections in place</CardTitle><CardDescription>Enforced by the server.</CardDescription></CardHeader>

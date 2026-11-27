@@ -5,7 +5,7 @@ import { prisma } from "./db";
 
 import { can, HttpError, notFound } from "./rbac";
 import type { AuthContext } from "./session";
-import { notify, notifyRoles } from "./notify";
+import { notify } from "./notify";
 import { REVIEWER_TARGETS, TRANSITIONS, type Status } from "@/lib/feedback-meta";
 
 // ---------------- Staff side ----------------
@@ -36,7 +36,7 @@ export async function listStaff(auth: AuthContext, f: z.infer<typeof ListFilter>
   const where: Prisma.FeedbackSubmissionWhereInput = {
     AND: [
       staffScope(auth),
-      f.status && f.status !== "all" ? (f.status === "open" ? { status: { notIn: ["RESOLVED", "CLOSED", "REJECTED", "DUPLICATE"] } } : { status: f.status }) : {},
+      f.status && f.status !== "all" ? (f.status === "open" ? { status: { in: ["OPEN", "IN_REVIEW", "ON_HOLD"] } } : { status: f.status }) : {},
       f.category ? { categoryId: f.category } : {},
       f.priority ? { priorityId: f.priority } : {},
       f.department ? { departmentId: f.department } : {},
@@ -59,6 +59,15 @@ export async function listStaff(auth: AuthContext, f: z.infer<typeof ListFilter>
     prisma.feedbackSubmission.count({ where }),
   ]);
   return { rows, total, page, pages: Math.max(1, Math.ceil(total / take)) };
+}
+
+/** Case count per status within the caller's scope (for the inbox tabs). */
+export async function statusCounts(auth: AuthContext, extra: Prisma.FeedbackSubmissionWhereInput = {}) {
+  const rows = await prisma.feedbackSubmission.groupBy({ by: ["status"], where: { AND: [staffScope(auth), extra] }, _count: true });
+  const c = Object.fromEntries(rows.map((r) => [r.status, r._count])) as Partial<Record<Status, number>>;
+  const n = (s: Status) => c[s] ?? 0;
+  return { OPEN: n("OPEN"), IN_REVIEW: n("IN_REVIEW"), ON_HOLD: n("ON_HOLD"), RESOLVED: n("RESOLVED"), CLOSED: n("CLOSED"),
+    open: n("OPEN") + n("IN_REVIEW") + n("ON_HOLD"), all: rows.reduce((a, r) => a + r._count, 0) };
 }
 
 export async function getStaff(auth: AuthContext, id: string) {
@@ -120,7 +129,6 @@ export async function changeStatus(auth: AuthContext, id: string, to: Status) {
     }),
     prisma.auditLog.create({ data: { actorId: auth.userId, action: override ? "feedback.status.override" : "feedback.status", target: id, meta: { from, to } } }),
   ]);
-  if (to === "ESCALATED") await notifyRoles(["SUPER_ADMIN"], "feedback.escalated", `${fb.reference} was escalated`, `/admin/feedback/${id}`);
 }
 
 export async function assignCase(auth: AuthContext, id: string, assigneeId: string) {
@@ -130,11 +138,11 @@ export async function assignCase(auth: AuthContext, id: string, assigneeId: stri
     where: { id: assigneeId, isActive: true, deletedAt: null, roles: { some: { role: { key: { in: ["REVIEWER", "HR"] } } } } },
   });
   if (!assignee) throw new HttpError(400, "Choose an active reviewer");
-  const moveToAssigned = ["SUBMITTED", "RECEIVED", "UNDER_REVIEW"].includes(fb.status);
+  const moveToAssigned = fb.status === "OPEN"; // assigning an open case starts the review
   await prisma.$transaction([
     prisma.feedbackAssignment.updateMany({ where: { feedbackId: id, active: true }, data: { active: false } }),
     prisma.feedbackAssignment.create({ data: { feedbackId: id, assigneeId, assignedById: auth.userId } }),
-    ...(moveToAssigned ? [prisma.feedbackSubmission.update({ where: { id }, data: { status: "ASSIGNED", history: { create: { fromStatus: fb.status, toStatus: "ASSIGNED", actorId: auth.userId, remarks: `Assigned to ${assignee.displayName}` } } } })] : []),
+    ...(moveToAssigned ? [prisma.feedbackSubmission.update({ where: { id }, data: { status: "IN_REVIEW", history: { create: { fromStatus: fb.status, toStatus: "IN_REVIEW", actorId: auth.userId, remarks: `Assigned to ${assignee.displayName}` } } } })] : []),
     prisma.auditLog.create({ data: { actorId: auth.userId, action: "feedback.assign", target: id, meta: { assigneeId } } }),
   ]);
   await notify(assigneeId, "feedback.assigned", `${fb.reference} was assigned to you`, `/hr/cases/${id}`);
@@ -143,7 +151,7 @@ export async function assignCase(auth: AuthContext, id: string, assigneeId: stri
 export async function staffMessage(auth: AuthContext, id: string, body: string) {
   if (!can(auth.roles, "feedback.message")) throw notFound();
   const fb = await loadForAction(auth, id);
-  if (["CLOSED", "REJECTED", "DUPLICATE"].includes(fb.status)) throw new HttpError(400, "This case is closed");
+  if (fb.status === "CLOSED") throw new HttpError(400, "This case is closed");
   await prisma.feedbackMessage.create({ data: { feedbackId: id, author: "STAFF", staffId: auth.userId, body } });
 }
 

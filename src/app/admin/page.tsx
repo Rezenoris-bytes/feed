@@ -6,5 +6,5 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const auth = await guardPage(["SUPER_ADMIN"]);
   const period = (await searchParams).period ?? "year";
   const stats = await getStats(auth, rangeFor(period));
-  return <Overview title="Overview" description="Submissions, investigations and resolution across the company." stats={stats} basePath="/admin" period={period} showDepartments />;
+  return <Overview title="Overview" stats={stats} basePath="/admin" period={period} showDepartments inboxPath="/admin/feedback" />;
 }

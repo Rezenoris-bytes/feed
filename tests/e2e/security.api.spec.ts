@@ -1,6 +1,7 @@
 import { expect, test, request } from "@playwright/test";
 import { accounts, anon, as, caseIdFor, options, submit } from "./helpers";
 import { BASE } from "../../playwright.config";
+import { prisma } from "./fixtures";
 
 test("security headers are set", async () => {
   const h = (await (await anon()).get("/")).headers();
@@ -71,13 +72,14 @@ test("forged fields in an anonymous submission are ignored", async () => {
   const s = await submit(o, { title: "forge attempt", fields: { status: "CLOSED", anonymous: "false", ownerHmac: "x", trackingKeyHash: "x", role: "SUPER_ADMIN" } });
   expect(s.res.status()).toBe(201);
   const id = await caseIdFor(hr, s.reference);
-  expect(await (await hr.get(`/hr/cases/${id}`)).text()).toContain("Submitted");
+  expect(id).toBeTruthy();
+  expect((await prisma.feedbackSubmission.findUnique({ where: { id } }))!.status).toBe("OPEN"); // forged status ignored
 });
 
 test("SQL injection in search is treated as text", async () => {
   const res = await (await as("hr")).get(`/hr/inbox?status=all&q=${encodeURIComponent("' OR 1=1; DROP TABLE users; --")}`);
   expect(res.status()).toBe(200);
-  expect(await res.text()).toContain("No feedback found");
+  expect(await res.text()).toContain("Nothing here");
 });
 
 test("stored XSS in anonymous titles is escaped", async () => {

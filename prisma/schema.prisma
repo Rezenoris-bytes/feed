@@ -15,18 +15,11 @@ enum RoleKey {
 }
 
 enum FeedbackStatus {
-  SUBMITTED
-  RECEIVED
-  UNDER_REVIEW
-  ASSIGNED
-  INVESTIGATION
-  ACTION_REQUIRED
+  OPEN
+  IN_REVIEW
+  ON_HOLD
   RESOLVED
   CLOSED
-  REJECTED
-  DUPLICATE
-  ESCALATED
-  AWAITING_INFO
 }
 
 enum MessageAuthor {
@@ -168,7 +161,7 @@ model FeedbackSubmission {
   priority     FeedbackPriority @relation(fields: [priorityId], references: [id])
   departmentId String?        @db.Char(36)
   department   Department?    @relation(fields: [departmentId], references: [id])
-  status       FeedbackStatus @default(SUBMITTED)
+  status       FeedbackStatus @default(OPEN)
   submittedOn  DateTime       @db.Date // day precision only, reduces timing correlation
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt

@@ -7,7 +7,7 @@ export default async function NotificationSettings() {
   await guardPage(["SUPER_ADMIN"]);
   return (
     <>
-      <PageHeader title="Notifications" description="Choose which events create in-app notifications. Feed doesn't send emails, so nothing leaves this server." />
+      <PageHeader title="Notifications" description="In-app alerts for staff" />
       <div className="max-w-2xl"><NotificationForm value={await getSetting("notifications")} /></div>
     </>
   );

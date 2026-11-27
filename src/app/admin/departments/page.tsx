@@ -10,7 +10,7 @@ export default async function Departments() {
   const rows = await prisma.department.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { users: true, feedback: true } } } });
   return (
     <>
-      <PageHeader title="Departments" description="Used for routing feedback and scoping reviewers. Deactivate instead of deleting so history is kept." />
+      <PageHeader title="Departments" description="Switch off instead of deleting" />
       <div className="mb-4"><AddNamedItem kind="dept" placeholder="New department name" /></div>
       <Card className="p-0">
         <Table>
