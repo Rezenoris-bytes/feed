@@ -56,7 +56,6 @@ export function ReportsView({ stats, period, label, basePath }: { stats: Stats; 
         <Breakdown title="Status / resolution report" data={stats.byStatus} total={stats.total} />
         <Breakdown title="Priority report" data={stats.byPriority} total={stats.total} />
       </div>
-      <p className="mt-6 flex items-center gap-2 text-xs text-muted-foreground"><FileText className="size-3.5" /> Every export is recorded in the audit log.</p>
     </>
   );
 }
