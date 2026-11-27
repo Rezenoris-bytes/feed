@@ -41,15 +41,22 @@ export async function getStats(auth: AuthContext, range: Range) {
   const days = resolved.map((r) => (r.resolvedAt!.getTime() - r.submittedOn.getTime()) / 86_400_000);
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? "Not specified";
 
-  // Monthly buckets across the range
-  const months: { key: string; label: string; submitted: number; resolved: number }[] = [];
-  const cur = new Date(Date.UTC(range.from.getUTCFullYear(), range.from.getUTCMonth(), 1));
-  while (cur <= range.to) {
-    months.push({ key: cur.toISOString().slice(0, 7), label: cur.toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }), submitted: 0, resolved: 0 });
-    cur.setUTCMonth(cur.getUTCMonth() + 1);
-  }
+  // Trend buckets sized to the period: days for up to a month, weeks for 3 months, months for a year.
+  // submittedOn is stored with day precision only, so a daily bucket never reveals a time of day.
+  const spanDays = (range.to.getTime() - range.from.getTime()) / 86_400_000;
+  const unit: "day" | "week" | "month" = spanDays <= 31 ? "day" : spanDays <= 100 ? "week" : "month";
+  const startOf = (d: Date) => {
+    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), unit === "month" ? 1 : d.getUTCDate()));
+    if (unit === "week") x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); // Monday
+    return x;
+  };
+  const step = (d: Date) => unit === "month" ? d.setUTCMonth(d.getUTCMonth() + 1) : d.setUTCDate(d.getUTCDate() + (unit === "week" ? 7 : 1));
+  const fmt: Intl.DateTimeFormatOptions = unit === "month" ? { month: "short", year: "2-digit", timeZone: "UTC" } : { day: "numeric", month: "short", timeZone: "UTC" };
+  const buckets: { key: number; label: string; submitted: number; resolved: number }[] = [];
+  for (const cur = startOf(range.from); cur <= range.to; step(cur))
+    buckets.push({ key: cur.getTime(), label: cur.toLocaleDateString("en-GB", fmt), submitted: 0, resolved: 0 });
   for (const m of monthly) {
-    const b = months.find((x) => x.key === m.submittedOn.toISOString().slice(0, 7));
+    const b = buckets.find((x) => x.key === startOf(m.submittedOn).getTime());
     if (b) { b.submitted++; if (["RESOLVED", "CLOSED"].includes(m.status)) b.resolved++; }
   }
 
@@ -67,7 +74,8 @@ export async function getStats(auth: AuthContext, range: Range) {
     byCategory: byCategory.map((r) => ({ name: name(categories, r.categoryId), value: r._count })).sort((a, b) => b.value - a.value),
     byPriority: byPriority.map((r) => ({ name: name(priorities, r.priorityId), rank: priorities.find((p) => p.id === r.priorityId)?.rank ?? 0, value: r._count })).sort((a, b) => a.rank - b.rank),
     byDepartment: byDept.map((r) => ({ name: name(departments, r.departmentId), value: r._count })).sort((a, b) => b.value - a.value),
-    monthly: months.map(({ label, submitted, resolved }) => ({ label, submitted, resolved })),
+    trendUnit: unit,
+    monthly: buckets.map(({ label, submitted, resolved }) => ({ label, submitted, resolved })),
   };
 }
 export type Stats = Awaited<ReturnType<typeof getStats>>;

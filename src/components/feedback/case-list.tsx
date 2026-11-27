@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Lock, Search, SlidersHorizontal } from "luci
 import { Input } from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { STATUS_LABEL, type Status } from "@/lib/feedback-meta";
+import { STATUSES, STATUS_LABEL, type Status } from "@/lib/feedback-meta";
 import { EmptyState, NativeSelect, StatusBadge, TONE_DOT, categoryIcon, fmtDate, toneOf } from "./bits";
 import type { listStaff, formOptions, statusCounts } from "@/server/feedback";
 
@@ -35,6 +35,28 @@ export function CaseList({ data, opts, basePath, filters, counts }: {
 
   return (
     <div className="space-y-4">
+      {/* status distribution: one segment per status, sized by its share; each segment opens that tab */}
+      {counts.all > 0 && (
+        <div className="space-y-2">
+          <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-sm bg-muted" role="img"
+            aria-label={`Status distribution: ${STATUSES.map((s) => `${STATUS_LABEL[s]} ${counts[s as keyof Counts]}`).join(", ")}`}>
+            {STATUSES.filter((s) => counts[s as keyof Counts] > 0).map((s) => (
+              <Link key={s} href={qs({ status: s })} title={`${STATUS_LABEL[s]}: ${counts[s as keyof Counts]}`}
+                style={{ flexGrow: counts[s as keyof Counts] }}
+                className={cn("h-full min-w-1.5 transition-opacity hover:opacity-80", TONE_DOT[toneOf(s)], status !== s && STATUSES.includes(status as Status) && "opacity-40")} />
+            ))}
+          </div>
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {STATUSES.filter((s) => counts[s as keyof Counts] > 0).map((s) => (
+              <span key={s} className="flex items-center gap-1.5">
+                <span className={cn("size-2 rounded-full", TONE_DOT[toneOf(s)])} />
+                {STATUS_LABEL[s]} <span className="tabular-nums text-foreground">{Math.round((counts[s as keyof Counts] / counts.all) * 100)}%</span>
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
+
       {/* status tabs */}
       <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Status">
         {TABS.map((t) => {
@@ -42,11 +64,11 @@ export function CaseList({ data, opts, basePath, filters, counts }: {
           const n = counts[t.key as keyof Counts];
           return (
             <Link key={t.key} href={qs({ status: t.key })} aria-current={on ? "page" : undefined}
-              className={cn("flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+              className={cn("flex shrink-0 items-center gap-2 rounded-md border px-3.5 py-1.5 text-sm transition-colors",
                 on ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground")}>
-              {t.key.length > 4 && t.key === t.key.toUpperCase() && <span className={cn("size-1.5 rounded-full", TONE_DOT[toneOf(t.key)])} />}
+              {STATUSES.includes(t.key as Status) && <span className={cn("size-1.5 rounded-full", TONE_DOT[toneOf(t.key)])} />}
               {t.label}
-              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", on ? "bg-primary-foreground/20" : "bg-muted")}>{n}</span>
+              <span className={cn("rounded px-1.5 text-xs tabular-nums", on ? "bg-primary-foreground/20" : "bg-muted")}>{n}</span>
             </Link>
           );
         })}
@@ -64,7 +86,7 @@ export function CaseList({ data, opts, basePath, filters, counts }: {
         </div>
         <details className="group" open={activeFilters > 0}>
           <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <SlidersHorizontal className="size-3.5" /> Filters{activeFilters > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{activeFilters}</span>}
+            <SlidersHorizontal className="size-3.5" /> Filters{activeFilters > 0 && <span className="rounded bg-primary px-1.5 text-xs text-primary-foreground">{activeFilters}</span>}
           </summary>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
             <NativeSelect name="category" defaultValue={filters.category ?? ""} aria-label="Category">
@@ -101,7 +123,7 @@ export function CaseList({ data, opts, basePath, filters, counts }: {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-                    {PRI_CHIP[f.priority.rank] && <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", PRI_CHIP[f.priority.rank])}>{f.priority.name}</span>}
+                    {PRI_CHIP[f.priority.rank] && <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", PRI_CHIP[f.priority.rank])}>{f.priority.name}</span>}
                     <StatusBadge status={f.status as Status} />
                     {f.assignments[0] && (
                       <span title={f.assignments[0].assignee.displayName} className="hidden size-7 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary sm:grid">

@@ -45,7 +45,7 @@ export function ReportsView({ stats, period, label, basePath }: { stats: Stats; 
         ))}
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {([["Total", stats.total], ["Open", stats.kpis.open], ["In review", stats.kpis.inReview], ["On hold", stats.kpis.onHold], ["Resolved", stats.kpis.resolved + stats.kpis.closed], ["Avg. days to resolve", stats.kpis.avgResolutionDays ?? "—"]] as const).map(([l, v]) => (
+        {([["Total", stats.total], ["Open", stats.kpis.open], ["In review", stats.kpis.inReview], ["On hold", stats.kpis.onHold], ["Resolved", stats.kpis.resolved + stats.kpis.closed], ["Days to resolve", stats.kpis.avgResolutionDays ?? "—"]] as const).map(([l, v]) => (
           <Card key={l} className="gap-1 p-4"><div className="text-xs text-muted-foreground">{l}</div><div className="text-xl font-semibold tabular-nums">{v}</div></Card>
         ))}
       </div>

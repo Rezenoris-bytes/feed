@@ -13,7 +13,7 @@ export default async function Home() {
       <section className="relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-12 text-center sm:px-10 sm:py-16">
         {/* soft brand glow */}
         <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(60%_60%_at_50%_0%,color-mix(in_oklch,var(--primary)_18%,transparent),transparent)]" />
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+        <span className="inline-flex items-center gap-1.5 rounded-md border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
           <Lock className="size-3.5 text-primary" /> 100% anonymous
         </span>
         <h1 className="mx-auto mt-5 max-w-xl text-balance text-4xl font-bold tracking-tight sm:text-5xl">

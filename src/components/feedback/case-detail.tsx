@@ -37,11 +37,11 @@ export function CaseDetail({ fb, auth, staff, backHref }: { fb: Case; auth: Auth
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-1.5 text-xs">
-          <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1 font-mono">{fb.reference}</span>
-          <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1">{fb.category.name}</span>
-          <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1">{fb.priority.name}</span>
-          {fb.department && <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1">{fb.department.name}</span>}
-          <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1">{fmtDate(fb.submittedOn)}</span>
+          <span className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1 font-mono">{fb.reference}</span>
+          <span className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1">{fb.category.name}</span>
+          <span className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1">{fb.priority.name}</span>
+          {fb.department && <span className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1">{fb.department.name}</span>}
+          <span className="whitespace-nowrap rounded-md bg-muted px-2.5 py-1">{fmtDate(fb.submittedOn)}</span>
         </div>
         <StatusProgress status={status} className="mt-6" />
       </section>

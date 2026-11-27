@@ -178,10 +178,10 @@ export function SubmitForm({ categories, priorities, departments, requireCode = 
               <div className="space-y-5">
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <div className="flex flex-wrap gap-1.5 text-xs">
-                    {category && <span className="rounded-full bg-background px-2.5 py-1 font-medium">{category.name}</span>}
-                    <span className="rounded-full bg-background px-2.5 py-1">{priorities.find((p) => p.id === v.priorityId)?.name}</span>
-                    {v.departmentId && <span className="rounded-full bg-background px-2.5 py-1">{departments.find((d) => d.id === v.departmentId)?.name}</span>}
-                    {files.length > 0 && <span className="rounded-full bg-background px-2.5 py-1">{files.length} file{files.length > 1 ? "s" : ""}</span>}
+                    {category && <span className="rounded-md bg-background px-2.5 py-1 font-medium">{category.name}</span>}
+                    <span className="rounded-md bg-background px-2.5 py-1">{priorities.find((p) => p.id === v.priorityId)?.name}</span>
+                    {v.departmentId && <span className="rounded-md bg-background px-2.5 py-1">{departments.find((d) => d.id === v.departmentId)?.name}</span>}
+                    {files.length > 0 && <span className="rounded-md bg-background px-2.5 py-1">{files.length} file{files.length > 1 ? "s" : ""}</span>}
                   </div>
                   <div className="mt-3 font-semibold">{v.title}</div>
                   <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">{v.description}</p>

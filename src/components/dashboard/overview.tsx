@@ -32,7 +32,7 @@ export function Overview({ title, stats, basePath, period, showDepartments, inbo
         <StatCard index={3} label="On hold" value={k.onHold} icon="hold" href={to("ON_HOLD")} />
         <StatCard index={4} label="Resolved" value={k.resolved} icon="resolved" href={to("RESOLVED")} />
         <StatCard index={5} label="Closed" value={k.closed} icon="closed" href={to("CLOSED")} />
-        <StatCard index={6} label="Avg. days to resolve" value={k.avgResolutionDays} icon="timer" />
+        <StatCard index={6} label="Resolve time" suffix="days" value={k.avgResolutionDays} icon="timer" />
       </div>
       <DashboardCharts stats={stats} showDepartments={showDepartments} />
     </>

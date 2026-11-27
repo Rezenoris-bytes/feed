@@ -28,10 +28,11 @@ function ChartCard({ title, children, empty }: { title: string; children: React.
 export function DashboardCharts({ stats, showDepartments = true }: { stats: Stats; showDepartments?: boolean }) {
   const anim = !useReducedMotion();
   const none = stats.total === 0;
+  const dots = stats.monthly.length <= 2; // a single point has no line to draw, so show it as a dot
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="lg:col-span-2">
-        <ChartCard title="Monthly trend" empty={none}>
+        <ChartCard title={stats.trendUnit === "day" ? "Daily trend" : stats.trendUnit === "week" ? "Weekly trend" : "Monthly trend"} empty={none}>
           <ResponsiveContainer>
             <AreaChart data={stats.monthly} margin={{ left: -20, right: 8 }}>
               <defs>
@@ -39,12 +40,12 @@ export function DashboardCharts({ stats, showDepartments = true }: { stats: Stat
                 <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={PALETTE[1]} stopOpacity={0.3} /><stop offset="1" stopColor={PALETTE[1]} stopOpacity={0} /></linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="label" {...AXIS} />
+              <XAxis dataKey="label" {...AXIS} minTickGap={16} />
               <YAxis allowDecimals={false} {...AXIS} />
               <Tooltip {...TIP} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="submitted" name="Submitted" stroke={PALETTE[0]} fill="url(#gS)" strokeWidth={2} isAnimationActive={anim} />
-              <Area type="monotone" dataKey="resolved" name="Resolved" stroke={PALETTE[1]} fill="url(#gR)" strokeWidth={2} isAnimationActive={anim} />
+              <Area type="linear" dataKey="submitted" name="Submitted" stroke={PALETTE[0]} fill="url(#gS)" strokeWidth={2} dot={dots} isAnimationActive={anim} />
+              <Area type="linear" dataKey="resolved" name="Resolved or closed" stroke={PALETTE[1]} fill="url(#gR)" strokeWidth={2} dot={dots} isAnimationActive={anim} />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>

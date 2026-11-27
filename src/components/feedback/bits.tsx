@@ -19,7 +19,7 @@ export const toneOf = (s: string) => STATUS_TONE[s as Status] ?? "neutral";
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
   const tone = toneOf(status);
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset", TONE_CLASS[tone], className)}>
+    <span className={cn("inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset", TONE_CLASS[tone], className)}>
       <span className={cn("size-1.5 rounded-full", TONE_DOT[tone])} />
       {STATUS_LABEL[status as Status] ?? status}
     </span>
