@@ -6,6 +6,7 @@ import { createSession } from "@/server/session";
 import { assertSameOrigin, handler } from "@/server/http";
 import { rateLimit } from "@/server/rate-limit";
 import { HttpError } from "@/server/rbac";
+import { adminMfaRequired } from "@/server/mfa-policy";
 
 const Body = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200) });
 const DUMMY_HASH = bcrypt.hashSync("timing-equaliser", 12); // equalise timing for unknown emails
@@ -39,7 +40,8 @@ export const POST = handler(async (req: Request) => {
   await prisma.auditLog.create({ data: { actorId: user.id, action: "auth.login" } });
 
   const staff = user.roles.some((r) => r.role.key === "HR" || r.role.key === "REVIEWER");
-  const next = isSuper ? (user.mfaEnabled ? "/mfa" : "/mfa/setup") : staff ? "/hr" : "/login";
+  const mfa = isSuper && (await adminMfaRequired());
+  const next = isSuper ? (mfa ? (user.mfaEnabled ? "/mfa" : "/mfa/setup") : "/admin") : staff ? "/hr" : "/login";
   return NextResponse.json({ next });
 });
 

@@ -8,6 +8,7 @@ const LABEL: Record<string, string> = {
   "auth.password.changed": "Changed password", "auth.sessions.revoked": "Signed out other devices",
   "feedback.status": "Changed case status", "feedback.status.override": "Overrode case status", "feedback.assign": "Assigned case",
   "report.export": "Exported report",
+  "security.adminMfa.off": "Turned OFF Super Admin authenticator codes", "security.adminMfa.on": "Turned on Super Admin authenticator codes",
 };
 
 export default async function Audit() {

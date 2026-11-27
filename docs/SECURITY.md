@@ -75,3 +75,9 @@ No critical or high-severity issues remain in application code.
   - a company-wide **hourly cap**
 - Reveal attempts on anonymous cases return 409 and are logged as DENIED.
 - Accepted trade-off: there's no proof the sender is an employee, and no per-person spam limit. HR judges each case on its content.
+## 7. Super Admin two-step verification switch (added 27 Nov 2026)
+- **Security → Two-step verification for Super Admins** turns the authenticator-code requirement on or off for all Super Admins. The default is **on**.
+- **Turning it off** needs the Super Admin's password **and** a current authenticator code, so a stolen session alone can't do it. It's audited as `security.adminMfa.off`, and the Security page then shows a warning.
+- **Turning it on** needs the password and applies straight away: sessions that signed in without a code are sent to enter or set one up.
+- If the setting can't be read, the app fails safe and requires the code.
+- Risk while off: one leaked Super Admin password gives full control. Keep it on in production.

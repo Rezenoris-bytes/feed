@@ -38,6 +38,8 @@ const PERM: Record<Action["action"], Permission> = {
 export const SettingsSchema = {
   company: z.object({ name: z.string().trim().min(1).max(80), supportText: z.string().trim().max(300).default("") }),
   notifications: z.object({ newFeedback: z.boolean(), highPriority: z.boolean(), escalation: z.boolean(), assignment: z.boolean(), messages: z.boolean() }),
+  // Changed only through /api/admin/security/mfa (password + code), never through settings.set.
+  security: z.object({ requireAdminMfa: z.boolean() }),
   anonymous: z.object({
     // Optional shared code printed on notice boards; stops random internet visitors. Empty = no code.
     accessCode: z.string().trim().toUpperCase().max(40).regex(/^[A-Z0-9-]*$/, "Letters, numbers and dashes only").default(""),
@@ -48,6 +50,7 @@ export const SETTINGS_DEFAULTS = {
   company: { name: "Feed", supportText: "" },
   notifications: { newFeedback: true, highPriority: true, escalation: true, assignment: true, messages: true },
   anonymous: { accessCode: "", hourlyLimit: 30 },
+  security: { requireAdminMfa: true },
 };
 
 export async function getSetting<K extends keyof typeof SETTINGS_DEFAULTS>(key: K): Promise<(typeof SETTINGS_DEFAULTS)[K]> {

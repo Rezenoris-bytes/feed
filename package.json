@@ -21,7 +21,8 @@
     "postinstall": "prisma generate",
     "start:app": "next start",
     "db:setup": "prisma migrate deploy && tsx prisma/seed.ts --reference-only",
-    "build:app": "next build --webpack"
+    "build:app": "next build --webpack",
+    "account-sql": "tsx scripts/account-sql.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

@@ -6,6 +6,7 @@ import { randomToken, sha256 } from "./crypto";
 import { can, HttpError, notFound, type Permission } from "./rbac";
 
 import { cookieNames } from "./cookie-policy";
+import { adminMfaRequired } from "./mfa-policy";
 
 /** Reads whichever session cookie this browser has (Secure __Host- variant over HTTPS, plain one over http). */
 async function readToken() {
@@ -65,7 +66,7 @@ export async function getAuth(): Promise<AuthContext | null> {
 export async function requireAuth(perm?: Permission): Promise<AuthContext> {
   const a = await getAuth();
   if (!a) throw new HttpError(401, "Sign in required");
-  if (a.roles.includes("SUPER_ADMIN") && !a.mfaVerified) throw new HttpError(401, "MFA required");
+  if (a.roles.includes("SUPER_ADMIN") && !a.mfaVerified && (await adminMfaRequired())) throw new HttpError(401, "MFA required");
   if (perm && !can(a.roles, perm)) throw notFound();
   return a;
 }
