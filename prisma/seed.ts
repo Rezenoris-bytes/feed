@@ -49,7 +49,7 @@ async function main() {
     { email: "hr@feed.local", name: "HR Administrator", role: "HR" },
     { email: "reviewer@feed.local", name: "Operations Reviewer", role: "REVIEWER" },
   ];
-  const lines = ["# Initial accounts â€” change these passwords after first login, then delete this file.", ""];
+  const lines = ["# Initial accounts: change these passwords after first login, then delete this file.", ""];
   for (const a of accounts) {
     const password = randomBytes(12).toString("base64url");
     const role = await prisma.role.findUniqueOrThrow({ where: { key: a.role } });

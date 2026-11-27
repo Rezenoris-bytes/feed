@@ -3,7 +3,7 @@ import {
   ShieldCheck, Fingerprint, Bell, Settings, FileText, UserRound, type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean };
+export type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean; short?: string };
 export type NavGroup = { title?: string; items: NavItem[] };
 export type Area = "hr" | "admin";
 
@@ -13,8 +13,8 @@ export const NAV: Record<Area, { name: string; groups: NavGroup[] }> = {
     groups: [
       { items: [
         { href: "/hr", label: "Overview", icon: LayoutGrid, mobile: true },
-        { href: "/hr/inbox", label: "Feedback inbox", icon: Inbox, mobile: true },
-        { href: "/hr/assigned", label: "Assigned cases", icon: ListChecks, mobile: true },
+        { href: "/hr/inbox", label: "Feedback inbox", icon: Inbox, mobile: true, short: "Inbox" },
+        { href: "/hr/assigned", label: "Assigned cases", icon: ListChecks, mobile: true, short: "Mine" },
         { href: "/hr/reports", label: "Reports", icon: BarChart3, mobile: true },
         { href: "/hr/account", label: "My account", icon: UserRound },
       ] },
@@ -25,7 +25,7 @@ export const NAV: Record<Area, { name: string; groups: NavGroup[] }> = {
     groups: [
       { items: [
         { href: "/admin", label: "Overview", icon: LayoutGrid, mobile: true },
-        { href: "/admin/feedback", label: "All feedback", icon: Inbox, mobile: true },
+        { href: "/admin/feedback", label: "All feedback", icon: Inbox, mobile: true, short: "Cases" },
         { href: "/admin/reports", label: "Reports", icon: BarChart3, mobile: true },
       ] },
       { title: "People", items: [
@@ -39,7 +39,7 @@ export const NAV: Record<Area, { name: string; groups: NavGroup[] }> = {
         { href: "/admin/categories", label: "Categories", icon: Tags },
         { href: "/admin/notifications", label: "Notifications", icon: Bell },
         { href: "/admin/security", label: "Security", icon: ShieldCheck },
-        { href: "/admin/settings", label: "System settings", icon: Settings },
+        { href: "/admin/settings", label: "System settings", icon: Settings, mobile: true, short: "Settings" },
       ] },
     ],
   },

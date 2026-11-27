@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { STATUSES, STATUS_LABEL, type Status } from "@/lib/feedback-meta";
-import { NativeSelect, TONE_DOT, toneOf } from "./bits";
+import { NativeSelect, TONE_CLASS, TONE_DOT, toneOf } from "./bits";
 
 async function act(id: string, body: object) {
   const res = await fetch(`/api/cases/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -24,22 +24,31 @@ export function StatusAction({ id, current, targets, canOverride }: { id: string
     catch (e) { toast.error((e as Error).message); }
     setBusy(null);
   }
+  const reason = (s: Status) =>
+    current === "CLOSED" ? "Closed cases can only be reopened by a Super Admin" : s === "CLOSED" ? "Only HR can close a case" : "Not available";
   return (
-    <div role="group" aria-label="Set status" className="grid grid-cols-2 gap-2">
-      {STATUSES.map((s) => {
-        const isCurrent = s === current;
-        const allowed = targets.includes(s) || (canOverride && !isCurrent);
-        return (
-          <button key={s} type="button" disabled={isCurrent || !allowed || !!busy} onClick={() => move(s)} aria-pressed={isCurrent}
-            className={cn("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition",
-              isCurrent ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30" : allowed ? "hover:border-primary/40 hover:bg-accent" : "opacity-40",
-              s === "CLOSED" && "col-span-2")}>
-            {busy === s ? <Loader2 className="size-3.5 animate-spin" /> : <span className={cn("size-2 rounded-full", TONE_DOT[toneOf(s)])} />}
-            {STATUS_LABEL[s]}
-            {isCurrent && <span className="ml-auto text-[10px] font-normal uppercase tracking-wide">Now</span>}
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      <div role="group" aria-label="Set status" className="grid grid-cols-2 gap-2">
+        {STATUSES.map((s) => {
+          const isCurrent = s === current;
+          const allowed = targets.includes(s) || (canOverride && !isCurrent);
+          return (
+            <button key={s} type="button" disabled={isCurrent || !allowed || !!busy} onClick={() => move(s)} aria-pressed={isCurrent}
+              title={!isCurrent && !allowed ? reason(s) : undefined}
+              className={cn("flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl border px-3 text-left text-sm font-medium transition",
+                // Current status uses the same colours as its badge and progress bar.
+                isCurrent && cn("border-transparent ring-1 ring-inset", TONE_CLASS[toneOf(s)]),
+                !isCurrent && allowed && "bg-background hover:border-primary/40 hover:bg-accent",
+                !isCurrent && !allowed && "cursor-not-allowed border-dashed bg-muted/40 text-muted-foreground",
+                s === "CLOSED" && "col-span-2")}>
+              {busy === s ? <Loader2 className="size-3.5 animate-spin" /> : <span className={cn("size-2 shrink-0 rounded-full", TONE_DOT[toneOf(s)])} />}
+              {STATUS_LABEL[s]}
+              {isCurrent && <Check className="ml-auto size-4 shrink-0" aria-label="Current status" />}
+            </button>
+          );
+        })}
+      </div>
+      {current === "CLOSED" && !canOverride && <p className="text-xs text-muted-foreground">Closed. Only a Super Admin can reopen it.</p>}
     </div>
   );
 }

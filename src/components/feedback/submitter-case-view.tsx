@@ -21,7 +21,7 @@ export function SubmitterCaseView({ fb, postUrl, payload, action }: { fb: Case; 
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary"><Icon className="size-5" /></span>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">{fb.title}</h1>
+            <h1 className="line-clamp-2 break-words text-xl font-bold tracking-tight sm:text-2xl">{fb.title}</h1>
             <p className="mt-0.5 text-xs text-muted-foreground"><span className="font-mono">{fb.reference}</span> · {fmtDate(fb.submittedOn)}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">{action}</div>

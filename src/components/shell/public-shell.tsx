@@ -19,7 +19,7 @@ export async function PublicShell({ children, nav = true }: { company?: string; 
             <nav className="ml-auto flex shrink-0 items-center gap-0.5 text-sm">
               <Link href="/submit" className="rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground sm:px-2.5">Submit</Link>
               <Link href="/track" className="rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground sm:px-2.5">Track</Link>
-              <Link href="/login" className="rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground sm:px-2.5">Staff</Link>
+              <Link href="/login" className="hidden rounded-md px-2 py-1.5 text-muted-foreground hover:bg-accent hover:text-foreground sm:inline sm:px-2.5">Staff</Link>
               <ThemeToggle />
             </nav>
           )}

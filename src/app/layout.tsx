@@ -50,7 +50,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla) inject attributes on <body>. Only affects this element's own attributes. */}
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
-        <Toaster />
+        {/* Top centre: never covers the phone bottom navigation. */}
+        <Toaster position="top-center" visibleToasts={2} />
         <RegisterSW />
       </body>
     </html>

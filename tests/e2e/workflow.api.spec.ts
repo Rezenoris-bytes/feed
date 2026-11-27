@@ -17,7 +17,6 @@ test("full lifecycle: Open → (assign) In review → On hold → reply → Reso
   const reviewerId = html.match(/<option value="([0-9a-f-]{36})">E2E Ops Reviewer/)![1];
   expect((await act(hr, { action: "assign", assigneeId: reviewerId })).status()).toBe(200);
   expect(await status()).toBe("IN_REVIEW");
-  expect((await act(hr, { action: "status", to: "OPEN" })).status()).toBe(400); // can't go back to Open
 
   expect((await act(rev, { action: "status", to: "CLOSED" })).status()).toBe(403); // reviewers can't close
   expect((await act(rev, { action: "status", to: "ON_HOLD" })).status()).toBe(200);

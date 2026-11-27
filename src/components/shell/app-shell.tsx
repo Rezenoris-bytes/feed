@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { LogOut, PanelLeft } from "lucide-react";
+import { LogOut, Menu, PanelLeft } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { BrandMark } from "./brand-mark";
 import { FreshOnBack, hardNavigate } from "./fresh-on-back";
 import { useEffect, useState } from "react";
@@ -32,7 +33,12 @@ export function AppShell({ area, user, company = "Feed", logo = null, hidden = [
     return !c;
   });
   const nav = { ...NAV[area], groups: NAV[area].groups.map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.href)) })) };
-  const mobileItems = nav.groups.flatMap((g) => g.items).filter((i) => i.mobile).slice(0, 5);
+  const allItems = nav.groups.flatMap((g) => g.items);
+  const mobileItems = allItems.filter((i) => i.mobile).slice(0, 4);
+  // Pages not in the phone bar are reachable from "More", so every page works on a phone.
+  const hasMore = allItems.length > mobileItems.length;
+  const moreActive = allItems.some((i) => !mobileItems.includes(i) && isActive(path, i.href));
+  const [moreOpen, setMoreOpen] = useState(false);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -95,7 +101,7 @@ export function AppShell({ area, user, company = "Feed", logo = null, hidden = [
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur md:hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
           <BrandMark logo={logo} company={company} size="sm" />
           <span className="truncate font-semibold">{company}</span>
-          <span className="text-sm text-muted-foreground">· {nav.name}</span>
+          <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">· {nav.name}</span>
           <div className="ml-auto flex items-center">{notifications && <NotificationBell />}<ThemeToggle /><Button variant="ghost" size="icon" onClick={logout} aria-label="Sign out"><LogOut className="size-4" /></Button></div>
         </header>
         {notifications && <div className="absolute right-6 top-4 z-10 hidden md:block"><NotificationBell /></div>}
@@ -111,16 +117,41 @@ export function AppShell({ area, user, company = "Feed", logo = null, hidden = [
 
         {/* Mobile bottom nav */}
         <nav className="fixed inset-x-0 bottom-0 z-20 grid border-t bg-background/95 backdrop-blur md:hidden"
-          style={{ gridTemplateColumns: `repeat(${mobileItems.length}, 1fr)`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+          style={{ gridTemplateColumns: `repeat(${mobileItems.length + (hasMore ? 1 : 0)}, 1fr)`, paddingBottom: "env(safe-area-inset-bottom)" }}>
           {mobileItems.map((it) => {
             const active = isActive(path, it.href);
             return (
-              <Link key={it.href} href={it.href} className={cn("flex flex-col items-center gap-1 py-2.5 text-[11px] text-muted-foreground", active && "text-primary")}>
+              <Link key={it.href} href={it.href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-1 py-2.5 text-[11px] text-muted-foreground", active && "text-primary")}>
                 <it.icon className="size-5" />
-                <span className="truncate">{it.label.split(" ")[0]}</span>
+                <span className="truncate">{it.short ?? it.label}</span>
               </Link>
             );
           })}
+          {hasMore && (
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+              <SheetTrigger render={<button type="button" className={cn("flex flex-col items-center gap-1 py-2.5 text-[11px] text-muted-foreground", moreActive && "text-primary")} />}>
+                <Menu className="size-5" /><span>More</span>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                <SheetHeader><SheetTitle>Menu</SheetTitle></SheetHeader>
+                <div className="space-y-4 px-4">
+                  {nav.groups.map((g, gi) => (
+                    <div key={gi}>
+                      {g.title && <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.title}</div>}
+                      <div className="grid grid-cols-2 gap-2">
+                        {g.items.map((it) => (
+                          <Link key={it.href} href={it.href} onClick={() => setMoreOpen(false)}
+                            className={cn("flex items-center gap-2.5 rounded-2xl border px-3 py-3 text-sm font-medium", isActive(path, it.href) ? "border-primary/40 bg-primary/10 text-primary" : "hover:bg-accent")}>
+                            <it.icon className="size-4 shrink-0" /><span className="truncate">{it.label}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </nav>
       </div>
     </div>

@@ -39,9 +39,9 @@ export function ReportsView({ stats, period, label, basePath }: { stats: Stats; 
           <a href={`/api/reports?format=pdf&period=${period}`} className={buttonVariants()}><Download /> PDF</a>
         </div>
       </PageHeader>
-      <div className="mb-6 flex flex-wrap gap-1 rounded-lg border p-1 w-fit">
+      <div className="mb-6 flex max-w-full gap-1 overflow-x-auto rounded-xl border bg-card p-1 [scrollbar-width:none] sm:w-fit [&::-webkit-scrollbar]:hidden">
         {PERIODS.map(([k, l]) => (
-          <Link key={k} href={`${basePath}?period=${k}`} className={cn("rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground", period === k && "bg-accent text-foreground")}>{l}</Link>
+          <Link key={k} href={`${basePath}?period=${k}`} className={cn("shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground", period === k && "bg-primary text-primary-foreground hover:text-primary-foreground")}>{l}</Link>
         ))}
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

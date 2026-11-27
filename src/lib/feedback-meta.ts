@@ -26,12 +26,12 @@ export function stageIndex(s: Status) {
   return s === "ON_HOLD" ? 1 : STAGES.indexOf(s);
 }
 
-/** Allowed moves for HR. Super Admin may set any status (recorded in the audit log). */
+/** Allowed moves for HR: any active status to any other; Closed is final. Super Admin may reopen (recorded in the audit log). */
 export const TRANSITIONS: Record<Status, Status[]> = {
-  OPEN: ["IN_REVIEW", "ON_HOLD", "RESOLVED", "CLOSED"],
-  IN_REVIEW: ["ON_HOLD", "RESOLVED", "CLOSED"],
-  ON_HOLD: ["IN_REVIEW", "RESOLVED", "CLOSED"],
-  RESOLVED: ["CLOSED", "IN_REVIEW"],
+  OPEN: STATUSES.filter((s) => s !== "OPEN"),
+  IN_REVIEW: STATUSES.filter((s) => s !== "IN_REVIEW"),
+  ON_HOLD: STATUSES.filter((s) => s !== "ON_HOLD"),
+  RESOLVED: STATUSES.filter((s) => s !== "RESOLVED"),
   CLOSED: [],
 };
 

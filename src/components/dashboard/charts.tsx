@@ -6,6 +6,8 @@ import type { Stats } from "@/server/stats";
 
 // Mid-tone categorical palette: readable on both the white and the dark theme.
 const PALETTE = ["#3b82f6", "#14b8a6", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#84cc16", "#f97316", "#94a3b8", "#ef4444", "#6366f1"];
+/** Same colours as the status badges everywhere else (sky, violet, amber, emerald, slate). */
+const STATUS_COLOR: Record<string, string> = { Open: "#0ea5e9", "In review": "#8b5cf6", "On hold": "#f59e0b", Resolved: "#10b981", Closed: "#94a3b8" };
 const AXIS = { stroke: "var(--muted-foreground)", fontSize: 12, tickLine: false, axisLine: false };
 const TIP = {
   contentStyle: { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--popover-foreground)" },
@@ -63,10 +65,10 @@ export function DashboardCharts({ stats, showDepartments = true }: { stats: Stat
         <ResponsiveContainer>
           <PieChart>
             <Pie data={stats.byStatus} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="85%" paddingAngle={2} stroke="none" isAnimationActive={anim}>
-              {stats.byStatus.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+              {stats.byStatus.map((s, i) => <Cell key={i} fill={STATUS_COLOR[s.name] ?? PALETTE[i % PALETTE.length]} />)}
             </Pie>
             <Tooltip {...TIP} />
-            <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 12 }} />
+            <Legend layout="horizontal" align="center" verticalAlign="bottom" wrapperStyle={{ fontSize: 12 }} />
           </PieChart>
         </ResponsiveContainer>
       </ChartCard>

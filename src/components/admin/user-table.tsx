@@ -18,7 +18,12 @@ export function UserTable({ rows, extraLabel }: { rows: UserRow[]; extraLabel?: 
         <TableBody>
           {rows.map((u) => (
             <TableRow key={u.id} className={u.isActive ? "" : "opacity-60"}>
-              <TableCell><div className="font-medium">{u.displayName}</div><div className="text-xs text-muted-foreground">{u.email}</div></TableCell>
+              <TableCell className="max-w-0 w-full">
+                {/* max-w-0 + truncate: long emails shrink instead of pushing the Active switch off a phone screen */}
+                <div className="truncate font-medium">{u.displayName}</div>
+                <div className="truncate text-xs text-muted-foreground">{u.email}</div>
+                <div className="truncate text-xs text-muted-foreground md:hidden">{u.role}{u.department ? ` · ${u.department}` : ""}</div>
+              </TableCell>
               <TableCell className="hidden md:table-cell">{u.role}</TableCell>
               <TableCell className="hidden md:table-cell">{u.department ?? "—"}</TableCell>
               {extraLabel && <TableCell className="hidden lg:table-cell">{u.extra ?? "—"}</TableCell>}
