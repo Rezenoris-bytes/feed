@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FreshOnBack, hardNavigate } from "@/components/shell/fresh-on-back";
 
 export function TrackForm({ initialRef }: { initialRef: string }) {
   const router = useRouter();
@@ -37,10 +38,12 @@ export function TrackForm({ initialRef }: { initialRef: string }) {
 }
 
 export function LockButton() {
-  const router = useRouter();
   return (
-    <Button variant="outline" size="sm" onClick={async () => { await fetch("/api/anonymous/track", { method: "DELETE" }); router.replace("/track"); }}>
+    <>
+    <FreshOnBack />
+    <Button variant="outline" size="sm" onClick={async () => { await fetch("/api/anonymous/track", { method: "DELETE" }); hardNavigate("/track"); }}>
       <LogOut /> Lock
     </Button>
+    </>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { LogOut, PanelLeft } from "lucide-react";
 import { BrandMark } from "./brand-mark";
+import { FreshOnBack, hardNavigate } from "./fresh-on-back";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,6 @@ export function AppShell({ area, user, company = "Feed", logo = null, hidden = [
   area: Area; user: { name: string }; company?: string; logo?: string | null; hidden?: string[]; notifications?: boolean; children: React.ReactNode;
 }) {
   const path = usePathname();
-  const router = useRouter();
   const reduce = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
   // Remember the choice per browser (a UI preference only; nothing sensitive).
@@ -36,11 +36,12 @@ export function AppShell({ area, user, company = "Feed", logo = null, hidden = [
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
+    hardNavigate("/login"); // full reload: nothing from the signed-in session stays in memory for Back
   }
 
   return (
     <div className="flex min-h-dvh bg-background text-foreground">
+      <FreshOnBack />
       {/* Desktop sidebar */}
       <aside className={cn("sticky top-0 hidden h-dvh shrink-0 flex-col border-r bg-sidebar transition-[width] md:flex", collapsed ? "w-16" : "w-72")}>
         <div className={cn("flex h-16 items-center border-b", collapsed ? "justify-center" : "gap-3 px-3")}>
