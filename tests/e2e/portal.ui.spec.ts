@@ -47,7 +47,7 @@ test("employee: submit without login, save key, then track the case", async ({ p
   await page.getByRole("link", { name: /Go to tracking/ }).click();
   await page.getByLabel("Reference").fill(ref);
   await page.getByLabel("Secret key").fill(key);
-  await page.getByRole("button", { name: "Open" }).click();
+  await page.getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByRole("heading", { name: `[e2e] UI ${info.project.name}` })).toBeVisible();
   await expect(page.getByText("my_photo")).toHaveCount(0);
   await noHorizontalScroll(page);

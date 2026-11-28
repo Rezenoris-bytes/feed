@@ -1,6 +1,6 @@
 import {
   LayoutGrid, MessageSquarePlus, Inbox, ListChecks, BarChart3, UserCog, Users, Building2, Tags,
-  ShieldCheck, Fingerprint, Bell, Settings, FileText, UserRound, type LucideIcon,
+  ShieldCheck, Fingerprint, Bell, Settings, FileText, UserRound, ClipboardList, type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean; short?: string };
@@ -16,6 +16,7 @@ export const NAV: Record<Area, { name: string; groups: NavGroup[] }> = {
         { href: "/hr/inbox", label: "Feedback inbox", icon: Inbox, mobile: true, short: "Inbox" },
         { href: "/hr/assigned", label: "Assigned cases", icon: ListChecks, mobile: true, short: "Mine" },
         { href: "/hr/reports", label: "Reports", icon: BarChart3, mobile: true },
+        { href: "/hr/customers", label: "Customer forms", icon: ClipboardList },
         { href: "/hr/account", label: "My account", icon: UserRound },
       ] },
     ],
@@ -27,6 +28,9 @@ export const NAV: Record<Area, { name: string; groups: NavGroup[] }> = {
         { href: "/admin", label: "Overview", icon: LayoutGrid, mobile: true },
         { href: "/admin/feedback", label: "All feedback", icon: Inbox, mobile: true, short: "Cases" },
         { href: "/admin/reports", label: "Reports", icon: BarChart3, mobile: true },
+      ] },
+      { title: "Customers", items: [
+        { href: "/admin/customers", label: "Customer forms", icon: ClipboardList },
       ] },
       { title: "People", items: [
         { href: "/admin/staff", label: "HR & reviewers", icon: UserCog },

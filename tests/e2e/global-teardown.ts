@@ -8,6 +8,8 @@ export default async function globalTeardown() {
   await prisma.$transaction(async (tx) => {
     const fb = await tx.feedbackSubmission.findMany({ where: { title: { startsWith: E2E_TAG } }, select: { id: true } });
     await tx.feedbackSubmission.deleteMany({ where: { id: { in: fb.map((f) => f.id) } } });
+    await tx.customerForm.deleteMany({ where: { title: { startsWith: E2E_TAG } } }); // cascades to links and replies
+    await tx.notification.deleteMany({ where: { kind: "customer.response", text: { contains: E2E_TAG } } });
     await tx.feedbackAssignment.deleteMany({ where: { assigneeId: { in: ids } } });
     await tx.notification.deleteMany({ where: { OR: [{ userId: { in: ids } }, { text: { contains: "FB-" }, link: { contains: "e2e" } }] } });
     await tx.user.deleteMany({ where: { id: { in: ids } } });

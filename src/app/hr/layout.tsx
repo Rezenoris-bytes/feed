@@ -7,6 +7,9 @@ import { can } from "@/server/rbac";
 export default async function HrLayout({ children }: { children: React.ReactNode }) {
   const a = await guardPage(["HR", "REVIEWER"]);
   const [company, branding] = await Promise.all([getSetting("company"), getBranding()]);
-  const hidden = can(a.roles, "reports.view") ? [] : ["/hr/reports"];
+  const hidden = [
+    ...(can(a.roles, "reports.view") ? [] : ["/hr/reports"]),
+    ...(can(a.roles, "customers.manage") ? [] : ["/hr/customers"]),
+  ];
   return <AppShell area="hr" user={{ name: a.displayName }} company={company.name} logo={logoUrl(branding)} hidden={hidden}>{children}</AppShell>;
 }

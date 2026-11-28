@@ -29,26 +29,26 @@ enum MessageAuthor {
 
 // ---------- Authentication ----------
 model User {
-  id             String    @id @default(uuid()) @db.Char(36)
-  email          String    @unique
-  passwordHash   String
-  displayName    String
-  isActive       Boolean   @default(true)
-  mfaSecretEnc   String?   @db.VarChar(255) // AES-GCM encrypted TOTP secret
-  mfaEnabled     Boolean   @default(false)
-  failedLogins   Int       @default(0)
-  lockedUntil    DateTime?
-  departmentId   String?   @db.Char(36)
-  department     Department? @relation(fields: [departmentId], references: [id])
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
+  id           String      @id @default(uuid()) @db.Char(36)
+  email        String      @unique
+  passwordHash String
+  displayName  String
+  isActive     Boolean     @default(true)
+  mfaSecretEnc String?     @db.VarChar(255) // AES-GCM encrypted TOTP secret
+  mfaEnabled   Boolean     @default(false)
+  failedLogins Int         @default(0)
+  lockedUntil  DateTime?
+  departmentId String?     @db.Char(36)
+  department   Department? @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
 
-  roles          UserRole[]
-  sessions       Session[]
-  profile        EmployeeProfile?
-  assignments    FeedbackAssignment[] @relation("assignee")
-  notifications  Notification[]
+  roles         UserRole[]
+  sessions      Session[]
+  profile       EmployeeProfile?
+  assignments   FeedbackAssignment[] @relation("assignee")
+  notifications Notification[]
 
   @@map("users")
 }
@@ -105,10 +105,10 @@ model Session {
 }
 
 model Department {
-  id        String   @id @default(uuid()) @db.Char(36)
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id        String               @id @default(uuid()) @db.Char(36)
+  name      String               @unique
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
   users     User[]
   feedback  FeedbackSubmission[]
 
@@ -116,30 +116,30 @@ model Department {
 }
 
 model EmployeeProfile {
-  userId      String  @id @db.Char(36)
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employeeNo  String  @unique
-  jobTitle    String?
-  phoneEnc    String? // encrypted
+  userId     String  @id @db.Char(36)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeNo String  @unique
+  jobTitle   String?
+  phoneEnc   String? // encrypted
 
   @@map("employee_profiles")
 }
 
 // ---------- Feedback (no user FK anywhere) ----------
 model FeedbackCategory {
-  id        String  @id @default(uuid()) @db.Char(36)
-  name      String  @unique
-  isActive  Boolean @default(true)
-  sortOrder Int     @default(0)
-  sensitive Boolean @default(false) // e.g. harassment → auto high priority, HR-only
+  id        String               @id @default(uuid()) @db.Char(36)
+  name      String               @unique
+  isActive  Boolean              @default(true)
+  sortOrder Int                  @default(0)
+  sensitive Boolean              @default(false) // e.g. harassment → auto high priority, HR-only
   feedback  FeedbackSubmission[]
 
   @@map("feedback_categories")
 }
 
 model FeedbackPriority {
-  id       String @id @default(uuid()) @db.Char(36)
-  key      String @unique // LOW, MEDIUM, HIGH, CRITICAL
+  id       String               @id @default(uuid()) @db.Char(36)
+  key      String               @unique // LOW, MEDIUM, HIGH, CRITICAL
   name     String
   rank     Int
   feedback FeedbackSubmission[]
@@ -148,31 +148,31 @@ model FeedbackPriority {
 }
 
 model FeedbackSubmission {
-  id           String         @id @default(uuid()) @db.Char(36)
-  reference    String         @unique // random, non-sequential
-  ownerHmac    String? // HMAC(userId) so employee can list own items; not reversible. NULL for anonymous cases.
-  anonymous    Boolean        @default(false) // true = no identity recorded anywhere; tracked with a secret key
+  id              String           @id @default(uuid()) @db.Char(36)
+  reference       String           @unique // random, non-sequential
+  ownerHmac       String? // HMAC(userId) so employee can list own items; not reversible. NULL for anonymous cases.
+  anonymous       Boolean          @default(false) // true = no identity recorded anywhere; tracked with a secret key
   trackingKeyHash String? // HMAC of the one-time secret key (anonymous only); the key itself is never stored
-  title        String         @db.VarChar(150)
-  description  String         @db.Text
-  categoryId   String         @db.Char(36)
-  category     FeedbackCategory @relation(fields: [categoryId], references: [id])
-  priorityId   String         @db.Char(36)
-  priority     FeedbackPriority @relation(fields: [priorityId], references: [id])
-  departmentId String?        @db.Char(36)
-  department   Department?    @relation(fields: [departmentId], references: [id])
-  status       FeedbackStatus @default(OPEN)
-  submittedOn  DateTime       @db.Date // day precision only, reduces timing correlation
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  resolvedAt   DateTime?
+  title           String           @db.VarChar(150)
+  description     String           @db.Text
+  categoryId      String           @db.Char(36)
+  category        FeedbackCategory @relation(fields: [categoryId], references: [id])
+  priorityId      String           @db.Char(36)
+  priority        FeedbackPriority @relation(fields: [priorityId], references: [id])
+  departmentId    String?          @db.Char(36)
+  department      Department?      @relation(fields: [departmentId], references: [id])
+  status          FeedbackStatus   @default(OPEN)
+  submittedOn     DateTime         @db.Date // day precision only, reduces timing correlation
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  resolvedAt      DateTime?
 
-  identity     FeedbackIdentityMapping?
-  attachments  FeedbackAttachment[]
-  assignments  FeedbackAssignment[]
-  history      FeedbackStatusHistory[]
-  notes        FeedbackInternalNote[]
-  messages     FeedbackMessage[]
+  identity    FeedbackIdentityMapping?
+  attachments FeedbackAttachment[]
+  assignments FeedbackAssignment[]
+  history     FeedbackStatusHistory[]
+  notes       FeedbackInternalNote[]
+  messages    FeedbackMessage[]
 
   @@index([ownerHmac])
   @@index([anonymous])
@@ -185,36 +185,36 @@ model FeedbackSubmission {
 
 // Only touched by src/server/identity.ts. RLS + separate DB role in migration.
 model FeedbackIdentityMapping {
-  feedbackId   String             @id @db.Char(36)
-  feedback     FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Restrict)
-  userIdEnc    String             @db.VarChar(255) // AES-256-GCM(userId)
-  createdAt    DateTime           @default(now())
+  feedbackId String             @id @db.Char(36)
+  feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Restrict)
+  userIdEnc  String             @db.VarChar(255) // AES-256-GCM(userId)
+  createdAt  DateTime           @default(now())
 
   @@map("feedback_identity_mappings")
 }
 
 model FeedbackAttachment {
-  id          String             @id @default(uuid()) @db.Char(36)
-  feedbackId  String             @db.Char(36)
-  feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  storageKey  String             @unique // random file name on disk
-  mimeType    String
-  sizeBytes   Int
-  label       String // "Attachment 1" — original filename is discarded
-  createdAt   DateTime           @default(now())
+  id         String             @id @default(uuid()) @db.Char(36)
+  feedbackId String             @db.Char(36)
+  feedback   FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  storageKey String             @unique // random file name on disk
+  mimeType   String
+  sizeBytes  Int
+  label      String // "Attachment 1" — original filename is discarded
+  createdAt  DateTime           @default(now())
 
   @@map("feedback_attachments")
 }
 
 model FeedbackAssignment {
-  id          String             @id @default(uuid()) @db.Char(36)
-  feedbackId  String             @db.Char(36)
-  feedback    FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
-  assigneeId  String             @db.Char(36)
-  assignee    User               @relation("assignee", fields: [assigneeId], references: [id])
-  assignedById String            @db.Char(36)
-  active      Boolean            @default(true)
-  createdAt   DateTime           @default(now())
+  id           String             @id @default(uuid()) @db.Char(36)
+  feedbackId   String             @db.Char(36)
+  feedback     FeedbackSubmission @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  assigneeId   String             @db.Char(36)
+  assignee     User               @relation("assignee", fields: [assigneeId], references: [id])
+  assignedById String             @db.Char(36)
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
 
   @@index([assigneeId, active])
   @@index([feedbackId])
@@ -305,4 +305,66 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ── Customer feedback forms (machines, service, cancellations) ─────────────────
+// Staff build a form, then send each customer a personal one-use link by WhatsApp, email or copy.
+
+enum CustomerFormStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model CustomerForm {
+  id          String             @id @default(uuid()) @db.Char(36)
+  title       String             @db.VarChar(120)
+  intro       String             @default("") @db.VarChar(600) // shown above the questions
+  thanks      String             @default("") @db.VarChar(300) // shown after submitting
+  fields      Json // CustomerField[] (see src/lib/customer-forms.ts)
+  status      CustomerFormStatus @default(DRAFT)
+  createdById String?            @db.Char(36)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  sends CustomerFormSend[]
+
+  @@index([status])
+  @@map("customer_forms")
+}
+
+model CustomerFormSend {
+  id           String       @id @default(uuid()) @db.Char(36)
+  formId       String       @db.Char(36)
+  form         CustomerForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  tokenHash    String       @unique @db.Char(64) // SHA-256 of the link token, used for lookup
+  tokenEnc     String       @db.VarChar(255) // the token encrypted, so staff can copy the link again
+  customerName String       @db.VarChar(120)
+  company      String?      @db.VarChar(120)
+  email        String?      @db.VarChar(254)
+  phone        String?      @db.VarChar(32)
+  machine      String?      @db.VarChar(160) // machine model / serial this feedback is about
+  sentById     String?      @db.Char(36)
+  emailedAt    DateTime?
+  openedAt     DateTime?
+  respondedAt  DateTime?
+  revokedAt    DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+
+  response CustomerFormResponse?
+
+  @@index([formId, createdAt])
+  @@map("customer_form_sends")
+}
+
+model CustomerFormResponse {
+  id          String           @id @default(uuid()) @db.Char(36)
+  sendId      String           @unique @db.Char(36)
+  send        CustomerFormSend @relation(fields: [sendId], references: [id], onDelete: Cascade)
+  fields      Json // copy of the questions as they were when answered
+  answers     Json // { [fieldId]: string | number | string[] }
+  submittedAt DateTime         @default(now())
+
+  @@map("customer_form_responses")
 }

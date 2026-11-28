@@ -38,7 +38,7 @@ test("locking a tracked case then pressing Back does not show the case", async (
   await page.waitForLoadState("networkidle");
   await page.getByLabel("Reference").fill(s.reference);
   await page.getByLabel("Secret key").fill(s.key);
-  await page.getByRole("button", { name: "Open" }).click();
+  await page.getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Lock-back/ })).toBeVisible();
   await page.getByRole("button", { name: "Lock" }).click();
   await expect(page).toHaveURL(/\/track$/);
