@@ -54,7 +54,7 @@ export const SETTINGS_DEFAULTS = {
 };
 
 export async function getSetting<K extends keyof typeof SETTINGS_DEFAULTS>(key: K): Promise<(typeof SETTINGS_DEFAULTS)[K]> {
-  const row = await prisma.systemSetting.findUnique({ where: { key } });
+  const row = await prisma.systemSetting.findUnique({ where: { key: key as string } });
   const parsed = SettingsSchema[key].safeParse(row?.value);
   return (parsed.success ? parsed.data : SETTINGS_DEFAULTS[key]) as (typeof SETTINGS_DEFAULTS)[K];
 }
