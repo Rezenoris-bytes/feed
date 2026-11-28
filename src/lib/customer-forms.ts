@@ -29,7 +29,7 @@ export const FormInput = z.object({
 });
 
 export const SendInput = z.object({
-  customerName: z.string().trim().min(2, "Customer name is required").max(120),
+  customerName: z.string().trim().max(120).optional().transform((v) => v ?? ""), // optional: you may only know a phone number
   company: z.string().trim().max(120).optional().transform((v) => v || undefined),
   email: z.string().trim().toLowerCase().max(254).optional().transform((v) => v || undefined).pipe(z.string().email("Check the email address").optional()),
   phone: z.string().trim().max(32).optional().transform((v) => v || undefined)
@@ -129,10 +129,25 @@ export const SEND_STATE = (s: { respondedAt: Date | string | null; revokedAt: Da
   s.respondedAt ? "replied" : s.revokedAt ? "withdrawn" : new Date(s.expiresAt) < new Date() ? "expired" : s.openedAt ? "opened" : "sent";
 export type SendState = ReturnType<typeof SEND_STATE>;
 
+/** Details a person may add on the open link. All optional. `website` is a hidden trap field for bots. */
+export const AboutInput = z.object({
+  name: z.string().trim().max(120).optional(),
+  company: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(32).optional().transform((v) => v || undefined)
+    .pipe(z.string().regex(/^\+?[0-9 ()-]{7,24}$/, "Check the phone number").optional()),
+  email: z.string().trim().toLowerCase().max(254).optional().transform((v) => v || undefined).pipe(z.string().email("Check the email address").optional()),
+  machine: z.string().trim().max(160).optional(),
+}).default({});
+
+/** How a reply/link is labelled for staff when the name isn't known. */
+export function whoLabel(s: { customerName: string; company?: string | null; phone?: string | null; email?: string | null; viaShare?: boolean }) {
+  return s.customerName || s.company || s.phone || s.email || (s.viaShare ? "Anonymous" : "Customer");
+}
+
 /** The invitation text used for WhatsApp and email (the link is added at the end). */
-export function inviteMessage(o: { customerName: string; company: string; formTitle: string; machine?: string | null }) {
+export function inviteMessage(o: { customerName?: string | null; company: string; formTitle: string; machine?: string | null }) {
   const about = o.machine ? ` about ${o.machine}` : "";
-  return `Hi ${o.customerName}, this is ${o.company}. We'd value your feedback${about}. Please fill in our short form "${o.formTitle}" – it takes about two minutes.`;
+  return `${o.customerName ? `Hi ${o.customerName}` : "Hello"}, this is ${o.company}. We'd value your feedback${about}. Please fill in our short form "${o.formTitle}" – it takes about two minutes.`;
 }
 
 /** wa.me click-to-chat link: opens WhatsApp with the message ready; staff tap send. Free, no API. */

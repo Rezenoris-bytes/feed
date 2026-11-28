@@ -1,8 +1,9 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import "dotenv/config";
+import { storageDir } from "../src/lib/storage-dir";
 
-export const BACKUP_DIR = process.env.BACKUP_DIR ?? "./storage/backups";
+export const BACKUP_DIR = storageDir("backups", process.env.BACKUP_DIR);
 
 // Backups use their own key so a stolen backup is useless without it. Falls back to FILE_ENCRYPTION_KEY.
 function key() {

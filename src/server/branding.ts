@@ -4,12 +4,13 @@ import path from "node:path";
 import sharp from "sharp";
 import { prisma } from "./db";
 import { HttpError } from "./rbac";
+import { storageDir } from "@/lib/storage-dir";
 
 /*
  * Company logo. Stored locally (no cloud) as a re-encoded PNG, so uploaded files can't carry scripts
  * (SVG is refused) or metadata. The version number busts browser caches when the logo changes.
  */
-const DIR = path.resolve(/* turbopackIgnore: true */ process.env.BRANDING_DIR ?? "./storage/branding");
+const DIR = storageDir("branding", process.env.BRANDING_DIR);
 const FILE = path.join(DIR, "logo.png");
 const MAX_BYTES = 2 * 1024 * 1024;
 /** App-icon sizes generated from the logo: Android (192/512), iPhone home screen (180), browser tab (32). */
@@ -60,8 +61,10 @@ export async function saveLogo(file: File, actorId: string) {
   await writeFile(FILE, png);
   await makeIcons(png);
   const value = { logoVersion: Date.now() };
+  const copy = { png: png.toString("base64") }; // database copy: the logo survives even if the files are lost
   await prisma.$transaction([
     prisma.systemSetting.upsert({ where: { key: "branding" }, update: { value }, create: { key: "branding", value } }),
+    prisma.systemSetting.upsert({ where: { key: "branding.logo" }, update: { value: copy }, create: { key: "branding.logo", value: copy } }),
     prisma.auditLog.create({ data: { actorId, action: "admin.branding.logo", meta: { bytes: png.length } } }),
   ]);
   return value;
@@ -71,7 +74,7 @@ export async function removeLogo(actorId: string) {
   await rm(FILE, { force: true });
   for (const s of ICON_SIZES) await rm(iconFile(s), { force: true });
   await prisma.$transaction([
-    prisma.systemSetting.deleteMany({ where: { key: "branding" } }),
+    prisma.systemSetting.deleteMany({ where: { key: { in: ["branding", "branding.logo"] } } }),
     prisma.auditLog.create({ data: { actorId, action: "admin.branding.logoRemoved" } }),
   ]);
 }
@@ -82,6 +85,7 @@ export async function readIcon(size: IconSize): Promise<Buffer | null> {
   // Icons are derived files: rebuild them from the logo if missing (e.g. after a restore or an older upload).
   const logo = await readLogo();
   if (!logo) return null;
+  await mkdir(DIR, { recursive: true });
   await makeIcons(logo);
   return readFile(iconFile(size)).catch(() => null);
 }
@@ -94,5 +98,13 @@ export function appIcons(b: Branding) {
 }
 
 export async function readLogo(): Promise<Buffer | null> {
-  return readFile(FILE).catch(() => null);
+  const file = await readFile(FILE).catch(() => null);
+  if (file) return file;
+  // File missing (new server folder, restore, ...): use the database copy and put the file back.
+  const row = await prisma.systemSetting.findUnique({ where: { key: "branding.logo" } });
+  const b64 = (row?.value as { png?: unknown } | null)?.png;
+  if (typeof b64 !== "string") return null;
+  const png = Buffer.from(b64, "base64");
+  await mkdir(DIR, { recursive: true }).then(() => writeFile(FILE, png)).catch(() => {});
+  return png;
 }

@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { ArrowLeft, ClipboardList, MessageSquareText, Send } from "lucide-react";
 import { PageHeader } from "@/components/shell/app-shell";
 import { EmptyState, fmtDate } from "@/components/feedback/bits";
 import { cn } from "@/lib/utils";
-import { SEND_STATE } from "@/lib/customer-forms";
-import { getFormDetail, listForms } from "@/server/customer-forms";
+import { SEND_STATE, whoLabel } from "@/lib/customer-forms";
+import { baseUrlFrom, getFormDetail, listForms } from "@/server/customer-forms";
 import { mailConfigured } from "@/server/mail";
 import { FormBuilder } from "./form-builder";
 import { FormStatusActions, NewFormButton } from "./form-actions";
-import { SendPanel, SendRowActions, StateBadge } from "./send-panel";
+import { SendPanel, SendRowActions, SharePanel, StateBadge } from "./send-panel";
 import { ResponsesView } from "./responses";
 
 const FORM_STATUS = {
@@ -82,6 +83,7 @@ export async function CustomerFormPage({ base, id, tab }: { base: string; id: st
   const active = TABS.find((t) => t.key === tab)?.key ?? (form.status === "DRAFT" ? "questions" : "send");
   const replied = form.sends.filter((s) => s.respondedAt).length;
   const mailReady = mailConfigured();
+  const shareUrl = form.shareCode ? `${baseUrlFrom(await headers())}/form/${form.shareCode}` : null;
 
   return (
     <>
@@ -109,23 +111,27 @@ export async function CustomerFormPage({ base, id, tab }: { base: string; id: st
       {active === "responses" && <ResponsesView form={form} />}
       {active === "send" && (
         <div className="space-y-6">
-          <SendPanel formId={form.id} mailReady={mailReady} live={form.status === "ACTIVE"} />
+          {form.status === "ACTIVE" && <SharePanel formId={form.id} url={shareUrl} title={form.title} />}
+          <div>
+            {form.status === "ACTIVE" && <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Or send a personal link to one customer</h2>}
+            <SendPanel formId={form.id} mailReady={mailReady} live={form.status === "ACTIVE"} />
+          </div>
           {form.sends.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Sent links · {form.sends.length}</h2>
+              <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Links and replies · {form.sends.length}</h2>
               <ul className="divide-y rounded-xl border bg-card">
                 {form.sends.map((s) => {
                   const state = SEND_STATE(s);
                   return (
                     <li key={s.id} className="flex items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{s.customerName}{s.company && <span className="font-normal text-muted-foreground"> · {s.company}</span>}</p>
+                        <p className="truncate text-sm font-medium">{whoLabel(s)}{s.customerName && s.company && <span className="font-normal text-muted-foreground"> · {s.company}</span>}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {fmtDate(s.createdAt)}{s.machine ? ` · ${s.machine}` : ""}{s.emailedAt ? " · emailed" : ""}{s.sentBy ? ` · by ${s.sentBy}` : ""}
+                          {fmtDate(s.createdAt)}{s.viaShare ? " · open link" : ""}{s.machine ? ` · ${s.machine}` : ""}{s.emailedAt ? " · emailed" : ""}{s.sentBy ? ` · by ${s.sentBy}` : ""}
                         </p>
                       </div>
                       <StateBadge state={state} />
-                      <SendRowActions id={s.id} state={state} hasEmail={!!s.email} mailReady={mailReady} />
+                      {s.viaShare ? <span className="size-7" aria-hidden /> : <SendRowActions id={s.id} state={state} hasEmail={!!s.email} mailReady={mailReady} />}
                     </li>
                   );
                 })}

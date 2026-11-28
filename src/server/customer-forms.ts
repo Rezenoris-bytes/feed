@@ -7,7 +7,7 @@ import { HttpError, notFound } from "./rbac";
 import type { AuthContext } from "./session";
 import { getSetting } from "./admin";
 import { mailConfigured, sendFormEmail } from "./mail";
-import { Field, FormInput, SendInput, checkAnswers, inviteMessage, type CustomerField } from "@/lib/customer-forms";
+import { AboutInput, Field, FormInput, SendInput, checkAnswers, inviteMessage, whoLabel, type CustomerField } from "@/lib/customer-forms";
 
 const audit = (auth: AuthContext, action: string, target: string, meta?: Prisma.InputJsonValue) =>
   prisma.auditLog.create({ data: { actorId: auth.userId, action: "customers." + action, target, meta } });
@@ -19,9 +19,11 @@ export const fieldsOf = (v: unknown): CustomerField[] => {
 
 /** Base URL for links. APP_URL wins (set it on Hostinger); otherwise the request's own host. */
 export function baseUrl(req: Request) {
+  return baseUrlFrom(req.headers, req.url);
+}
+export function baseUrlFrom(h: Headers, url = "http://localhost") {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, "");
-  const h = req.headers;
-  const proto = h.get("x-forwarded-proto")?.split(",")[0] ?? new URL(req.url).protocol.replace(":", "");
+  const proto = h.get("x-forwarded-proto")?.split(",")[0] ?? new URL(url).protocol.replace(":", "");
   return `${proto}://${h.get("x-forwarded-host") ?? h.get("host")}`;
 }
 
@@ -34,14 +36,16 @@ export async function createForm(auth: AuthContext, input: unknown) {
 }
 
 export async function updateForm(auth: AuthContext, id: string, input: unknown) {
-  const body = z.object({ status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional() }).passthrough().parse(input);
+  const body = z.object({ status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(), share: z.boolean().optional() }).passthrough().parse(input);
   const existing = await prisma.customerForm.findUnique({ where: { id } });
   if (!existing) throw notFound();
   const data: Prisma.CustomerFormUpdateInput = {};
   if ("fields" in body) { const d = FormInput.parse(body); Object.assign(data, { ...d, fields: d.fields }); }
   if (body.status) data.status = body.status;
+  if (body.share !== undefined) data.shareCode = body.share ? (existing.shareCode ?? randomToken(12)) : null; // off → old link dies
   const f = await prisma.customerForm.update({ where: { id }, data });
-  await audit(auth, body.status ? "form.status" : "form.update", id, body.status ? { status: body.status } : undefined);
+  await audit(auth, body.share !== undefined ? "form.share" : body.status ? "form.status" : "form.update", id,
+    body.share !== undefined ? { on: body.share } : body.status ? { status: body.status } : undefined);
   return f;
 }
 
@@ -161,7 +165,7 @@ export async function submitAnswers(token: string, raw: unknown) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && ["P2025", "P2002"].includes(e.code)) throw new HttpError(409, "You have already answered this form. Thank you!");
     throw e;
   }
-  await notifyStaff(link.send.id, link.send.customerName, link.form.title);
+  await notifyStaff(link.send.id, link.send.customerName || "A customer", link.form.title);
   return { ok: true as const, thanks: link.form.thanks };
 }
 
@@ -179,11 +183,43 @@ async function notifyStaff(sendId: string, customer: string, formTitle: string) 
   });
 }
 
+// ── Open link (one link for everyone; details optional) ───────────────────────
+export async function openShare(code: string) {
+  if (!/^[A-Za-z0-9_-]{12,32}$/.test(code)) return null;
+  const form = await prisma.customerForm.findUnique({ where: { shareCode: code } });
+  if (!form) return null;
+  if (form.status !== "ACTIVE") return { state: "unavailable" as const };
+  return { state: "open" as const, form: { id: form.id, title: form.title, intro: form.intro, thanks: form.thanks, fields: fieldsOf(form.fields) } };
+}
+
+export async function submitShare(code: string, raw: unknown) {
+  const body = z.object({ answers: z.record(z.string(), z.unknown()), about: AboutInput, website: z.string().optional() }).parse(raw);
+  const link = await openShare(code);
+  if (!link) throw notFound();
+  if (link.state !== "open") throw new HttpError(409, "This form isn't available right now.");
+  if (body.website) return { ok: true as const, thanks: link.form.thanks }; // bot filled the hidden field: pretend success, store nothing
+  const parsed = checkAnswers(link.form.fields, body.answers);
+  if (!parsed.ok) return parsed;
+  const a = body.about;
+  const t = randomToken(24); // never shown: open-link replies have no personal link
+  const now = new Date();
+  const send = await prisma.customerFormSend.create({
+    data: {
+      formId: link.form.id, viaShare: true, tokenHash: sha256(t), tokenEnc: encrypt(t),
+      customerName: a.name ?? "", company: a.company || null, phone: a.phone ?? null, email: a.email ?? null, machine: a.machine || null,
+      openedAt: now, respondedAt: now, expiresAt: now,
+      response: { create: { fields: link.form.fields, answers: parsed.answers } },
+    },
+  });
+  await notifyStaff(send.id, whoLabel({ ...send, viaShare: true }), link.form.title);
+  return { ok: true as const, thanks: link.form.thanks };
+}
+
 // ── Reading (staff) ───────────────────────────────────────────────────────────
 export async function listForms() {
   const forms = await prisma.customerForm.findMany({
     where: { status: { not: "ARCHIVED" } }, orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { sends: true } } },
+    include: { _count: { select: { sends: { where: { viaShare: false } } } } }, // personal links sent
   });
   const replied = await prisma.customerFormSend.groupBy({ by: ["formId"], where: { respondedAt: { not: null } }, _count: true });
   const archived = await prisma.customerForm.count({ where: { status: "ARCHIVED" } });

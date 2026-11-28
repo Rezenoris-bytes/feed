@@ -101,3 +101,66 @@ test("customer form: questions are validated", async () => {
   expect((await bad([{ id: "abc12345", type: "script", label: "x" }])).status()).toBe(400);
   expect((await bad([{ id: "abc12345", type: "short", label: "Name" }])).status()).toBe(200);
 });
+
+test("open link: anyone can answer, details optional, can be turned off", async () => {
+  const hr = await as("hr");
+  const body = machine();
+  const { id } = await (await hr.post("/api/customer-forms", { data: body })).json();
+  // Off by default; can only be used once the form is live.
+  expect((await prisma.customerForm.findUniqueOrThrow({ where: { id } })).shareCode).toBeNull();
+  expect((await hr.patch(`/api/customer-forms/${id}`, { data: { share: true } })).status()).toBe(200);
+  const code = (await prisma.customerForm.findUniqueOrThrow({ where: { id } })).shareCode!;
+  expect(code).toMatch(/^[A-Za-z0-9_-]{16}$/);
+  // Own address per run: the open link limits replies per internet address.
+  const visitor = await anon({ "X-Forwarded-For": `10.${Date.now() % 250}.${Math.floor(Math.random() * 250)}.7` });
+  expect(await (await visitor.get(`/form/${code}`)).text()).toContain("isn&#x27;t available"); // still a draft
+  expect((await hr.patch(`/api/customer-forms/${id}`, { data: { status: "ACTIVE" } })).status()).toBe(200);
+
+  // The Send tab shows the link.
+  expect(await (await hr.get(`/hr/customers/${id}?tab=send`)).text()).toContain(`/form/${code}`);
+
+  const page = await visitor.get(`/form/${code}`);
+  expect(page.status()).toBe(200);
+  expect(await page.text()).toContain("About you");
+  const [q1, q2] = body.fields;
+  const post = (data: object) => visitor.post(`/api/form/${code}`, { data });
+
+  // No details at all: fine. Same person can answer again (it's an open link).
+  expect((await post({ answers: { [q1.id]: 4 }, about: {} })).status()).toBe(200);
+  expect((await post({ answers: { [q1.id]: 5, [q2.id]: 3 }, about: { name: "Walk-in", phone: "+91 90000 11111", machine: "LX-9" } })).status()).toBe(200);
+  // Bad phone → 400; required answer missing → 400; bot trap → silently ignored.
+  expect((await post({ answers: { [q1.id]: 5 }, about: { phone: "abc" } })).status()).toBe(400);
+  expect((await post({ answers: {}, about: {} })).status()).toBe(400);
+  expect((await post({ answers: { [q1.id]: 5 }, about: { name: "Bot" }, website: "http://spam" })).status()).toBe(200);
+
+  const rows = await prisma.customerFormSend.findMany({ where: { formId: id }, include: { response: true }, orderBy: { createdAt: "asc" } });
+  expect(rows.length).toBe(2);
+  expect(rows.every((r) => r.viaShare && r.respondedAt && r.response)).toBe(true);
+  expect(rows[1]).toMatchObject({ customerName: "Walk-in", phone: "+91 90000 11111", machine: "LX-9" });
+  const replies = await (await hr.get(`/hr/customers/${id}?tab=responses`)).text();
+  expect(replies).toContain("Anonymous");
+  expect(replies).toContain("Walk-in");
+
+  // Turning it off kills the link; turning it on again makes a new one.
+  expect((await hr.patch(`/api/customer-forms/${id}`, { data: { share: false } })).status()).toBe(200);
+  expect((await visitor.get(`/form/${code}`)).status()).toBe(404);
+  expect((await post({ answers: { [q1.id]: 5 }, about: {} })).status()).toBe(404);
+  await hr.patch(`/api/customer-forms/${id}`, { data: { share: true } });
+  expect((await prisma.customerForm.findUniqueOrThrow({ where: { id } })).shareCode).not.toBe(code);
+
+  // Reviewers can't switch it.
+  expect((await (await as("reviewer")).patch(`/api/customer-forms/${id}`, { data: { share: false } })).status()).toBe(404);
+});
+
+test("personal link without a customer name", async () => {
+  const hr = await as("hr");
+  const { id } = await (await hr.post("/api/customer-forms", { data: machine() })).json();
+  await hr.patch(`/api/customer-forms/${id}`, { data: { status: "ACTIVE" } });
+  const r = await hr.post(`/api/customer-forms/${id}/sends`, { data: { phone: "+91 98888 77777", days: 7 } });
+  expect(r.status()).toBe(200);
+  const { link, message } = await r.json();
+  expect(message.startsWith("Hello, this is")).toBe(true);
+  const html = await (await (await anon()).get(new URL(link).pathname)).text();
+  expect(html).not.toContain("Hi ");
+  expect(await (await hr.get(`/hr/customers/${id}?tab=send`)).text()).toContain("+91 98888 77777");
+});

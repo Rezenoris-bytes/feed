@@ -8,15 +8,18 @@ test.describe.configure({ mode: "serial" });
 
 // Preserve whatever logo the company already has.
 const LOGO = "storage/branding/logo.png", SAVED = "storage/e2e/logo-backup.png";
-let savedSetting: unknown = undefined;
+let savedSetting: unknown = undefined, savedCopy: unknown = undefined;
 test.beforeAll(async () => {
   savedSetting = (await prisma.systemSetting.findUnique({ where: { key: "branding" } }))?.value ?? null;
+  savedCopy = (await prisma.systemSetting.findUnique({ where: { key: "branding.logo" } }))?.value ?? null;
   if (existsSync(LOGO)) copyFileSync(LOGO, SAVED);
 });
 test.afterAll(async () => {
   if (existsSync(SAVED)) { copyFileSync(SAVED, LOGO); rmSync(SAVED); } else rmSync(LOGO, { force: true });
   if (savedSetting) await prisma.systemSetting.upsert({ where: { key: "branding" }, update: { value: savedSetting as never }, create: { key: "branding", value: savedSetting as never } });
   else await prisma.systemSetting.deleteMany({ where: { key: "branding" } });
+  if (savedCopy) await prisma.systemSetting.upsert({ where: { key: "branding.logo" }, update: { value: savedCopy as never }, create: { key: "branding.logo", value: savedCopy as never } });
+  else await prisma.systemSetting.deleteMany({ where: { key: "branding.logo" } });
 });
 
 const png = () => sharp({ create: { width: 900, height: 300, channels: 4, background: { r: 30, g: 64, b: 175, alpha: 1 } } })
@@ -51,6 +54,14 @@ test("Super Admin uploads a logo; it is resized, cleaned and shown everywhere", 
   const head = await (await anon()).get("/").then((r) => r.text());
   expect(head).toMatch(new RegExp(`rel="apple-touch-icon" href="/api/branding/icon/180\\?v=${logoVersion}"`));
   expect((await (await anon()).get("/api/branding/icon/64")).status()).toBe(404);
+
+  // A redeploy that loses the files (new server folder) must not break the logo: it comes back from the database copy.
+  for (const f of ["logo.png", "icon-32.png", "icon-180.png", "icon-192.png", "icon-512.png"]) rmSync(`storage/branding/${f}`, { force: true });
+  const again = await (await anon()).get(`/api/branding/logo?v=${logoVersion}`);
+  expect(again.status()).toBe(200);
+  expect((await sharp(await again.body()).metadata()).width).toBe(meta.width);
+  expect((await (await anon()).get(`/api/branding/icon/192?v=${logoVersion}`)).status()).toBe(200);
+  expect(existsSync("storage/branding/logo.png")).toBe(true); // file put back
 });
 
 test("only Super Admin can change the logo; SVG and non-images are refused", async () => {

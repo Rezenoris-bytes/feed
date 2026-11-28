@@ -6,9 +6,10 @@ import sharp from "sharp";
 import { PDFDocument, PDFName } from "pdf-lib";
 import { decrypt, encrypt, fileKey } from "./crypto";
 import { HttpError } from "./rbac";
+import { storageDir } from "@/lib/storage-dir";
 import { ATTACHMENT_TYPES } from "@/lib/feedback-meta";
 
-const DIR = path.resolve(/* turbopackIgnore: true */ process.env.UPLOAD_DIR ?? "./storage/uploads");
+const DIR = storageDir("uploads", process.env.UPLOAD_DIR);
 const MAX = Number(process.env.MAX_UPLOAD_MB ?? 10) * 1024 * 1024;
 
 function sniff(b: Buffer): (typeof ATTACHMENT_TYPES)[number] | null {

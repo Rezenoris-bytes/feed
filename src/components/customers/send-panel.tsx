@@ -46,7 +46,7 @@ export function SendPanel({ formId, mailReady, live }: { formId: string; mailRea
     setBusy(true);
     try {
       const r = await api(`/api/customer-forms/${formId}/sends`, "POST", { ...f, days: Number(f.days), sendEmail });
-      setCreated({ ...r, phone: f.phone, email: f.email, name: f.customerName });
+      setCreated({ ...r, phone: f.phone, email: f.email, name: f.customerName || f.company || f.phone || f.email || "this customer" });
       if (r.emailed) toast.success(`Emailed to ${f.email}`);
       if (r.emailFailed) toast.error("The email couldn't be sent. Use WhatsApp or copy the link.");
       form.reset(); router.refresh();
@@ -81,7 +81,7 @@ export function SendPanel({ formId, mailReady, live }: { formId: string; mailRea
   return (
     <form onSubmit={submit} className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5"><Label htmlFor="customerName">Customer name *</Label><Input id="customerName" name="customerName" required minLength={2} maxLength={120} autoComplete="off" /></div>
+        <div className="space-y-1.5"><Label htmlFor="customerName">Customer name <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="customerName" name="customerName" maxLength={120} autoComplete="off" /></div>
         <div className="space-y-1.5"><Label htmlFor="company">Company</Label><Input id="company" name="company" maxLength={120} autoComplete="off" /></div>
         <div className="space-y-1.5"><Label htmlFor="phone">WhatsApp number</Label><Input id="phone" name="phone" type="tel" inputMode="tel" placeholder="+91 98765 43210" maxLength={32} autoComplete="off" />
           <p className="text-xs text-muted-foreground">With country code</p></div>
@@ -125,5 +125,46 @@ export function SendRowActions({ id, state, hasEmail, mailReady }: { id: string;
         <DropdownMenuItem variant="destructive" disabled={!open} onClick={() => run(() => api(`/api/customer-sends/${id}`, "POST", { action: "revoke" }), "Link withdrawn")}><Ban /> Withdraw link</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** One open link for the whole form: share it anywhere (WhatsApp group, website, QR code). Details are optional for the person. */
+export function SharePanel({ formId, url, title }: { formId: string; url: string | null; title: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  async function toggle(on: boolean) {
+    if (!on && !confirm("Turn off the open link? Anyone who has it won't be able to answer any more.")) return;
+    setBusy(true);
+    try { await api(`/api/customer-forms/${formId}`, "PATCH", { share: on }); toast.success(on ? "Open link is on" : "Open link turned off"); router.refresh(); }
+    catch (e) { toast.error((e as Error).message); }
+    setBusy(false);
+  }
+  const text = `Please share your feedback with us: "${title}". It takes about two minutes.
+${url}`;
+  return (
+    <section className="rounded-xl border bg-card p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary"><Link2 className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">Open link</h2>
+          <p className="text-sm text-muted-foreground">One link for anyone. Use it when you don&apos;t know who will answer. Name and contact are optional for them.</p>
+        </div>
+        {url && <Button variant="ghost" size="sm" onClick={() => toggle(false)} disabled={busy}>Turn off</Button>}
+      </div>
+      {url ? (
+        <>
+          <button type="button" onClick={() => copy(url)} className="mt-4 flex w-full items-center gap-2 rounded-md border bg-muted px-3 py-2.5 text-left font-mono text-xs">
+            <Link2 className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{url}</span><Copy className="ml-auto size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <a href={whatsappUrl(null, text)} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants(), "bg-[#25D366] text-white hover:bg-[#1fb757]")}><MessageCircle /> WhatsApp</a>
+            <a href={`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`} className={buttonVariants({ variant: "outline" })}><Mail /> Email app</a>
+            <Button variant="outline" onClick={() => copy(url)}><Copy /> Copy link</Button>
+          </div>
+        </>
+      ) : (
+        <Button className="mt-4" variant="outline" onClick={() => toggle(true)} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Link2 />} Create open link</Button>
+      )}
+    </section>
   );
 }

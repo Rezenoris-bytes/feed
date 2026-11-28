@@ -7,6 +7,7 @@ import { execSync } from "node:child_process";
 import { copyFile, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { BACKUP_DIR, open, sha256, type Manifest } from "./backup-lib";
+import { storageDir } from "../src/lib/storage-dir";
 
 type TableDump = { columns: string[]; rows: (string | null)[][] };
 
@@ -73,10 +74,10 @@ async function main() {
     if (sha256(b) !== u.sha256) throw new Error(`Checksum mismatch in upload ${u.name}`);
   }
   if (live) {
-    const up = path.resolve(process.env.UPLOAD_DIR ?? "./storage/uploads");
+    const up = storageDir("uploads", process.env.UPLOAD_DIR);
     await mkdir(up, { recursive: true });
     for (const u of manifest.uploads) await copyFile(path.join(dir, "uploads", u.name), path.join(up, u.name));
-    const brandDir = path.resolve(process.env.BRANDING_DIR ?? "./storage/branding");
+    const brandDir = storageDir("branding", process.env.BRANDING_DIR);
     await mkdir(brandDir, { recursive: true });
     await copyFile(path.join(dir, "logo.png"), path.join(brandDir, "logo.png")).catch(() => {}); // only if the backup had one
   }

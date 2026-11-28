@@ -22,7 +22,7 @@ export default async function CustomerFormPage({ params }: { params: Promise<{ t
   return (
     <PublicShell nav={false}>
       {link.state === "open" ? (
-        <CustomerFormView token={token} customerName={link.send.customerName} machine={link.send.machine} form={link.form} />
+        <CustomerFormView mode="personal" postUrl={`/api/f/${token}`} customerName={link.send.customerName} machine={link.send.machine} form={link.form} />
       ) : (() => {
         const c = CLOSED[link.state]; const Icon = c.icon;
         return (

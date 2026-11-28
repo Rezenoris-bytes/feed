@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import { EmptyState, fmtDate } from "@/components/feedback/bits";
-import { SEND_STATE, type CustomerField } from "@/lib/customer-forms";
+import { SEND_STATE, whoLabel, type CustomerField } from "@/lib/customer-forms";
 import type { FormDetail } from "@/server/customer-forms";
 import { StateBadge } from "./send-panel";
 import { FIELD_ICON } from "./icons";
@@ -68,8 +68,8 @@ export function ResponsesView({ form }: { form: FormDetail }) {
           <details key={s.id} className="group rounded-xl border bg-card">
             <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{s.customerName}{s.company && <span className="font-normal text-muted-foreground"> · {s.company}</span>}</p>
-                <p className="truncate text-xs text-muted-foreground">{s.machine ? `${s.machine} · ` : ""}{fmtDate(s.response!.submittedAt)}</p>
+                <p className="truncate font-medium">{whoLabel(s)}{s.customerName && s.company && <span className="font-normal text-muted-foreground"> · {s.company}</span>}</p>
+                <p className="truncate text-xs text-muted-foreground">{s.viaShare ? "Open link · " : ""}{s.machine ? `${s.machine} · ` : ""}{fmtDate(s.response!.submittedAt)}</p>
               </div>
               <StateBadge state={SEND_STATE(s)} />
             </summary>

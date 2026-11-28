@@ -4,6 +4,7 @@ import mysql from "mysql2/promise";
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { BACKUP_DIR, seal, sha256, type Manifest } from "./backup-lib";
+import { storageDir } from "../src/lib/storage-dir";
 
 /** Every value comes back exactly as MySQL stores it (as text), so a restore reproduces it byte for byte. */
 export const asText: mysql.TypeCast = (field) => field.string();
@@ -34,13 +35,13 @@ async function main() {
   await db.end();
 
   // Attachments are already encrypted on disk; copy as-is.
-  const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? "./storage/uploads");
+  const uploadDir = storageDir("uploads", process.env.UPLOAD_DIR);
   for (const f of await readdir(uploadDir).catch(() => [] as string[])) {
     await copyFile(path.join(uploadDir, f), path.join(dir, "uploads", f));
     manifest.uploads.push({ name: f, sha256: sha256(await readFile(path.join(uploadDir, f))) });
   }
   // Company logo (not sensitive; copied as-is).
-  const logo = path.resolve(process.env.BRANDING_DIR ?? "./storage/branding", "logo.png");
+  const logo = path.join(storageDir("branding", process.env.BRANDING_DIR), "logo.png");
   await copyFile(logo, path.join(dir, "logo.png")).catch(() => {});
   await writeFile(path.join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
 
